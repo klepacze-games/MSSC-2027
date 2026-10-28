@@ -8,6 +8,8 @@ jobs:
     name: Check code
     steps:
       #Przygotowanie narzędzi
+      - name: Checkout repository
+        uses: actions/checkout@v6
       - name: Setup dotnet
         uses: actions/setup-dotnet@v6
         with:
@@ -18,7 +20,7 @@ jobs:
         run: dotnet tool restore
 
       #Weryfikacja
-      - name: Verify Analyzers
+      - name: Verify Analyzersac
         run: dotnet format MSSC-2027.sln --verify-no-changes
       - name: Build solution
         run: dotnet build MSSC-2027.sln --no-restore
