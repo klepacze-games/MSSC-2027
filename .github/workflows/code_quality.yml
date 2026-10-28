@@ -13,13 +13,13 @@ jobs:
         with:
           dotnet-version: "10.x"
       - name: Restore
-        run: dotnet restore MSSC-2027.sln
+        run: dotnet restore .
       - name: Tool Restore
         run: dotnet tool restore
 
       #Weryfikacja
       - name: Verify Analyzers
-        run: dotnet format MSSC-2027.sln --verify-no-changes
+        run: dotnet format MSSC-2027.sln --verify-no-changesgit
       - name: Build solution
         run: dotnet build MSSC-2027.sln --no-restore
 
