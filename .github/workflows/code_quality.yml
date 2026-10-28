@@ -1,0 +1,29 @@
+name: code_quality.yml
+on: [push, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  run_reformat:
+    runs-on: ubuntu-latest
+    name: Check code
+    steps:
+      #Przygotowanie narzędzi
+      - name: Checkout branch
+        uses: actions/checkout@v7
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.x"
+      - name: Restore
+        run: dotnet restore .
+      - name: Tool Restore
+        run: dotnet tool restore
+
+      #Weryfikacja
+      - name: Verify CSharpier
+        run: dotnet csharpier check .
+      - name: Verify Analyzers
+        run: dotnet format . --verify-no-changes
+      - name: Build solution
+        run: dotnet build . --no-restore
+
