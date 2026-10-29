@@ -1,4 +1,5 @@
 using Godot;
+using MSSC2027.Vehicles.SnowMobile;
 using GameManager = MSSC2027.AutoLoad.GameManager;
 
 namespace MSSC2027.Player.Standard;
@@ -12,6 +13,7 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private Camera3D _camera;
     [Export] private Panel _staminaBar;
     [Export] private Node3D _cameraCrouchPosition;
+    [Export] private SnowMobile _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
 
     [ExportCategory("Rodzaje prękdkości i ruchu")]
     [Export] private float _jumpVelocity = 4.5f;
@@ -52,8 +54,9 @@ public partial class PlayerMain : CharacterBody3D
 
     // Stamina i speed
     private float _speed;
+    private float _staminaBeforVehicle;
     private float _stamina;
-    private float Stamina
+    public float Stamina
     {
         get => _stamina;
         set
@@ -72,6 +75,8 @@ public partial class PlayerMain : CharacterBody3D
     private Vector3 _standardPosition;
     private Vector3 _targetHeadPosition;
     private float _timeBob;
+    private bool _isOnVehicle;
+    private float _staminaBarSizeX;
     #endregion
 
     public override void _Ready()
@@ -81,12 +86,20 @@ public partial class PlayerMain : CharacterBody3D
         _stickSensitivity = GameManager.Instance.StickSensitivity;
         _baseFov = GameManager.Instance.BaseFov;
 
+        // Podpinanie sygnałów od skutera
+        if (_snowMobile != null)
+        {
+            _snowMobile.PlayerEntered += OnPlayerEnteredVehicle;
+            _snowMobile.PlayerExited += OnPlayerExitedVehicle;
+        }
+
         // Ustawianie domyślnych wartości
         _camera.Fov = _baseFov;
         _speed = _standardSpeed;
         Stamina = _maxStamina;
         Input.MouseMode = Input.MouseModeEnum.Captured;
         _standardPosition = _head.Position;
+        _staminaBarSizeX = _staminaBar.Size.X;
     }
 
     private void Look(float yaw, float pitch)
@@ -125,30 +138,43 @@ public partial class PlayerMain : CharacterBody3D
         }
         else
         {
-            if (Stamina < _maxStamina)
-                Stamina = Mathf.Min(_maxStamina, Stamina + _staminaRegeneration);
-            if (_isExhausted && Stamina >= _minStaminaToSprint)
-                _isExhausted = false;
+            if (!_isOnVehicle)
+            {
+                if (Stamina < _maxStamina)
+                    Stamina = Mathf.Min(_maxStamina, Stamina + _staminaRegeneration);
+
+                if (_isExhausted && Stamina >= _minStaminaToSprint)
+                    _isExhausted = false;
+            }
         }
     }
 
     private void UpdateStaminaBar()
     {
-        _staminaBar.SetDeferred(
-            Control.PropertyName.Size,
-            new Vector2(1920 * Stamina / _maxStamina, _staminaBar.Size.Y)
-        );
+        _staminaBar.SetDeferred(Control.PropertyName.Size, new Vector2(_staminaBarSizeX * Stamina / _maxStamina, _staminaBar.Size.Y));
     }
 
     public override void _Input(InputEvent @event)
     {
         if (@event is InputEventMouseMotion mouseMotion && Input.MouseMode == Input.MouseModeEnum.Captured)
         {
-            Look(
-                -mouseMotion.Relative.X * _mouseSensitivity,
-                -mouseMotion.Relative.Y * _mouseSensitivity
-            );
+            Look(-mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
         }
+    }
+
+    private void OnPlayerEnteredVehicle()
+    {
+        _isOnVehicle = true;
+        _staminaBeforVehicle = Stamina;
+    }
+
+    private void OnPlayerExitedVehicle(double timeSpentOnVehicle)
+    {
+        GD.Print(timeSpentOnVehicle);
+        _isOnVehicle = false;
+        float staminaGained = (float)timeSpentOnVehicle * _staminaRegeneration * 60f;
+        Stamina = Mathf.Min(_staminaBeforVehicle + staminaGained, _maxStamina);
+
     }
 
     private Vector3 HeadBob(float time)
@@ -169,19 +195,11 @@ public partial class PlayerMain : CharacterBody3D
             Vector3 right = GlobalTransform.Basis.X;
 
             float forwardDot = velocity.Dot(forward);
-            float forwardTilt = Mathf.Clamp(
-                forwardDot * Mathf.DegToRad(_runPitch),
-                Mathf.DegToRad(-_maxPitch),
-                Mathf.DegToRad(_maxPitch)
-            );
+            float forwardTilt = Mathf.Clamp(forwardDot * Mathf.DegToRad(_runPitch), Mathf.DegToRad(-_maxPitch), Mathf.DegToRad(_maxPitch));
             angles.X += forwardTilt;
 
             float rightDot = velocity.Dot(right);
-            float sideTilt = Mathf.Clamp(
-                rightDot * Mathf.DegToRad(_runRoll),
-                Mathf.DegToRad(-_maxRoll),
-                Mathf.DegToRad(_maxRoll)
-            );
+            float sideTilt = Mathf.Clamp(rightDot * Mathf.DegToRad(_runRoll), Mathf.DegToRad(-_maxRoll), Mathf.DegToRad(_maxRoll));
             angles.Z -= sideTilt;
         }
 
@@ -237,8 +255,8 @@ public partial class PlayerMain : CharacterBody3D
             }
             else
             {
-                velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * 7.0f);
-                velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * 7.0f);
+                velocity.X = Mathf.Lerp(velocity.X, 0.0f, d * 7.0f);
+                velocity.Z = Mathf.Lerp(velocity.Z, 0.0f, d * 7.0f);
             }
         }
         else

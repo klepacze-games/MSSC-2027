@@ -45,6 +45,10 @@ public partial class SnowMobile : RigidBody3D
     [Export] private float _flipCheck = 2.0f;
     [Export] private float _flipDelay = 1.5f;
 
+    // Syngały
+    [Signal] public delegate void PlayerEnteredEventHandler();
+    [Signal] public delegate void PlayerExitedEventHandler(double timeSpentOnVehicle);
+
     // AutoLoad
     private float _mouseSensitivity;
     private float _stickSensitivity;
@@ -64,6 +68,7 @@ public partial class SnowMobile : RigidBody3D
     private float _flipCheckTimer;
     private float _flipDelayTimer;
     private float _currentSteerAngle;
+    private double _timeOnVehicle;
     #endregion
 
     public override void _Ready()
@@ -116,12 +121,14 @@ public partial class SnowMobile : RigidBody3D
     private void EnterVehicle(CharacterBody3D player)
     {
         _isOccupied = true;
+        _timeOnVehicle = 0.0;
         _driver = player;
 
         _driver.Visible = false;
         _driver.ProcessMode = ProcessModeEnum.Disabled;
 
         _camera.MakeCurrent();
+        EmitSignal(SignalName.PlayerEntered);
 
         SetPhysicsProcess(true);
     }
@@ -142,6 +149,7 @@ public partial class SnowMobile : RigidBody3D
         playerCamera.MakeCurrent();
 
         _isOccupied = false;
+        EmitSignal(SignalName.PlayerExited, _timeOnVehicle);
         _driver = null;
     }
 
@@ -181,6 +189,8 @@ public partial class SnowMobile : RigidBody3D
     {
         float d = (float)delta;
         CheckForFlip(d);
+
+        if (_isOccupied) _timeOnVehicle += d;
 
         // Obracanie kamerą na gamepadzie
         Vector2 look = Input.GetVector("LookLeft", "LookRight", "LookUp", "LookDown");
@@ -242,6 +252,7 @@ public partial class SnowMobile : RigidBody3D
         float traction = rearGrounded / 2f;
         if (Mathf.Abs(forwardSpeed) < _maxSpeed || Mathf.Sign(forwardSpeed) != Mathf.Sign(throttle))
         {
+            if (throttle < 0) throttle = -0.25f;
             ApplyCentralForce(forward * throttle * _enginePower * traction);
         }
 

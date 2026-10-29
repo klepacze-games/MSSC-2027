@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://vlbkegywktx1" path="res://src/Vehicles/SnowMobile/SnowMobile.cs" id="1_i23ty"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_i23ty"]
-friction = 0.1
+friction = 0.3
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i23ty"]
 blend_mode = 3
@@ -203,7 +203,7 @@ transform = Transform3D(60, 0, 0, 0, 60, 0, 0, 0, 60, 0, -0.3157909, -1.2878456)
 shape = SubResource("CylinderShape3D_nxl24")
 
 [node name="ExitPoint" type="Marker3D" parent="." unique_id=523856861]
-transform = Transform3D(60, 0, 0, 0, 60, 0, 0, 0, 60, 1.4431088, -0.5347682, -1.0768906)
+transform = Transform3D(60, 0, 0, 0, 60, 0, 0, 0, 60, 1.7086313, -0.5347682, -1.0768906)
 
 [node name="Head" type="Node3D" parent="." unique_id=876636282]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7138684, -1.235847)
@@ -231,22 +231,22 @@ mesh = SubResource("ArrayMesh_vtevu")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.745, -2.024)
 
 [node name="Ray_FR" type="RayCast3D" parent="." unique_id=1939800286]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66152716, -0.9994963, -3.4101102)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66152716, -0.9834502, -3.4101102)
 target_position = Vector3(0, -0.6, 0)
 collision_mask = 2
 
 [node name="Ray_FL" type="RayCast3D" parent="." unique_id=1483615783]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6573287, -0.9994963, -3.4101102)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6573287, -0.9834502, -3.4101102)
 target_position = Vector3(0, -0.6, 0)
 collision_mask = 2
 
 [node name="Ray_RR" type="RayCast3D" parent="." unique_id=533882272]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66196096, -0.99914557, -0.20043412)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66196096, -0.98309946, -0.20043412)
 target_position = Vector3(0, -0.6, 0)
 collision_mask = 2
 
 [node name="Ray_RL" type="RayCast3D" parent="." unique_id=1626170905]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6573287, -0.9994963, -0.20030287)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6573287, -0.9834502, -0.20030287)
 target_position = Vector3(0, -0.6, 0)
 collision_mask = 2
 

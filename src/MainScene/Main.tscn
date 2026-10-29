@@ -53,8 +53,9 @@ shader_parameter/paint_layer_4_detail_size = 2.0
 [node name="Main" type="Node3D" unique_id=1456064230]
 script = ExtResource("1_0lxnl")
 
-[node name="Player" parent="." unique_id=1751409063 instance=ExtResource("2_0lxnl")]
+[node name="Player" parent="." unique_id=1751409063 node_paths=PackedStringArray("_snowMobile") instance=ExtResource("2_0lxnl")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.4142118, -21.930576, 0)
+_snowMobile = NodePath("../SnowMobile")
 
 [node name="SunLight" type="DirectionalLight3D" parent="." unique_id=1453893211]
 transform = Transform3D(1, 0, 0, 0, 0.5034529, 0.8640227, 0, -0.8640227, 0.5034529, 0, 0, 22)
