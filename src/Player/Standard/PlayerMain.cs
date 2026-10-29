@@ -93,7 +93,7 @@ public partial class PlayerMain : CharacterBody3D
     {
         RotateY(yaw);
         _head.RotateX(pitch);
-        var rot = _head.Rotation;
+        Vector3 rot = _head.Rotation;
         rot.X = Mathf.Clamp(rot.X, Mathf.DegToRad(-89f), Mathf.DegToRad(89f));
         _head.Rotation = rot;
     }

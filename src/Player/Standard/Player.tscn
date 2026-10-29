@@ -6,12 +6,12 @@
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_nxl24"]
 
-[node name="Player" type="CharacterBody3D" unique_id=1751409063 node_paths=PackedStringArray("Head", "Camera", "StaminaBar", "CameraCrouchPosition")]
+[node name="Player" type="CharacterBody3D" unique_id=1751409063 node_paths=PackedStringArray("_head", "_camera", "_staminaBar", "_cameraCrouchPosition")]
 script = ExtResource("1_vy1tf")
-Head = NodePath("Head")
-Camera = NodePath("Head/Camera")
-StaminaBar = NodePath("Gui/StaminaBar")
-CameraCrouchPosition = NodePath("CameraCrouchPosition")
+_head = NodePath("Head")
+_camera = NodePath("Head/Camera")
+_staminaBar = NodePath("Gui/StaminaBar")
+_cameraCrouchPosition = NodePath("CameraCrouchPosition")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=453194025]
 shape = SubResource("CapsuleShape3D_nxl24")

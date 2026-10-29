@@ -13,7 +13,8 @@ public partial class SnowMobile : RigidBody3D
     [Export] private Camera3D _camera;
     [Export] private Marker3D _exitPoint;
     [Export] private Node3D _centerOfMassNode;
-    [Export] private Node3D _steeringNode;
+    [Export] private Node3D _steeringWheelNode;
+    [Export] private Node3D _steeringSkidsNode;
     [Export] private Array<RayCast3D> _rayCasts;
 
     [ExportCategory("Ustawienia Kamery")]
@@ -26,23 +27,23 @@ public partial class SnowMobile : RigidBody3D
     [Export] private float _maxRoll = 2.5f;
 
     [ExportCategory("Parametry Pojazdu")]
-    [Export] public float EnginePower = 6000f;
-    [Export] public float MaxSpeed = 25f;
-    [Export] public float TurnTorque = 2500f;
-    [Export] public float LateralGrip = 4f;
+    [Export] private float _enginePower = 6000f;
+    [Export] private float _maxSpeed = 25f;
+    [Export] private float _turnTorque = 2500f;
+    [Export] private float _lateralGrip = 4f;
 
     [ExportCategory("Kierownica")]
-    [Export] private float _maxSteerAngle = 30.0f;
+    [Export] private float _maxSteerAngle = 20.0f;
     [Export] private float _steerReturnSpeed = 10.0f;
 
     [ExportCategory("Zawieszenie")]
-    [Export] public float RestLength = 0.6f;
-    [Export] public float SpringStrength = 40f;
-    [Export] public float SpringDamping = 8f;
+    [Export] private float _restLength = 0.6f;
+    [Export] private float _springStrength = 40f;
+    [Export] private float _springDamping = 8f;
 
     [ExportCategory("System Przewrócenia")]
-    [Export] private float _flipCheckDelay = 2.0f;
-    [Export] private float _flipTimer = 1.5f;
+    [Export] private float _flipCheck = 2.0f;
+    [Export] private float _flipDelay = 1.5f;
 
     // AutoLoad
     private float _mouseSensitivity;
@@ -61,6 +62,7 @@ public partial class SnowMobile : RigidBody3D
 
     // Inne
     private float _flipCheckTimer;
+    private float _flipDelayTimer;
     private float _currentSteerAngle;
     #endregion
 
@@ -82,9 +84,13 @@ public partial class SnowMobile : RigidBody3D
         if (@event.IsActionPressed("Interact"))
         {
             if (!_isOccupied && _isPlayerNearby && _nearbyPlayer != null)
+            {
                 EnterVehicle(_nearbyPlayer);
+            }
             else if (_isOccupied)
+            {
                 ExitVehicle();
+            }
         }
     }
 
@@ -101,13 +107,9 @@ public partial class SnowMobile : RigidBody3D
 
     public override void _Input(InputEvent @event)
     {
-        if (@event is InputEventMouseMotion mouseMotion
-            && Input.MouseMode == Input.MouseModeEnum.Captured)
+        if (@event is InputEventMouseMotion mouseMotion && Input.MouseMode == Input.MouseModeEnum.Captured)
         {
-            Look(
-                -mouseMotion.Relative.X * _mouseSensitivity,
-                -mouseMotion.Relative.Y * _mouseSensitivity
-            );
+            Look(-mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
         }
     }
 
@@ -131,11 +133,7 @@ public partial class SnowMobile : RigidBody3D
         SetPhysicsProcess(false);
 
         _driver.GlobalPosition = _exitPoint.GlobalPosition;
-        _driver.GlobalRotation = new Vector3(
-            _driver.GlobalRotation.X,
-            GlobalRotation.Y,
-            _driver.GlobalRotation.Z
-        );
+        _driver.GlobalRotation = new Vector3(_driver.GlobalRotation.X, GlobalRotation.Y, _driver.GlobalRotation.Z);
 
         _driver.Visible = true;
         _driver.ProcessMode = ProcessModeEnum.Inherit;
@@ -150,6 +148,7 @@ public partial class SnowMobile : RigidBody3D
     private void OnInteractionAreaBodyEntered(Node3D body)
     {
         if (body is not CharacterBody3D character) return;
+
         _isPlayerNearby = true;
         _nearbyPlayer = character;
     }
@@ -157,6 +156,7 @@ public partial class SnowMobile : RigidBody3D
     private void OnInteractionAreaBodyExited(Node3D body)
     {
         if (body != _nearbyPlayer) return;
+
         _isPlayerNearby = false;
         _nearbyPlayer = null;
     }
@@ -170,11 +170,7 @@ public partial class SnowMobile : RigidBody3D
             Vector3 right = GlobalTransform.Basis.X;
 
             float rightDot = velocity.Dot(right);
-            float sideTilt = Mathf.Clamp(
-                rightDot * Mathf.DegToRad(_driveRoll) * 5.0f,
-                Mathf.DegToRad(-_maxRoll),
-                Mathf.DegToRad(_maxRoll)
-            );
+            float sideTilt = Mathf.Clamp(rightDot * Mathf.DegToRad(_driveRoll) * 5.0f, Mathf.DegToRad(-_maxRoll), Mathf.DegToRad(_maxRoll));
             angles.Z += sideTilt;
         }
 
@@ -200,39 +196,40 @@ public partial class SnowMobile : RigidBody3D
         int rearGrounded = 0;
         Vector3 normalSum = Vector3.Zero;
 
+        if (_rayCasts.Count == 0) GD.PrintErr("BŁĄD: Raycasty nie są przypisane w skrypcie skutera, jeśli są to dodaj ponownie scenę skutera");
+
         for (int i = 0; i < _rayCasts.Count; i++)
         {
             RayCast3D ray = _rayCasts[i];
-            if (!ray.IsColliding())
-                continue;
+            if (!ray.IsColliding()) continue;
 
             Vector3 hit = ray.GetCollisionPoint();
             Vector3 normal = ray.GetCollisionNormal();
             float distance = ray.GlobalPosition.DistanceTo(hit);
-            float compression = RestLength - distance;
+            float compression = _restLength - distance;
 
             Vector3 offset = ray.GlobalPosition - GlobalPosition;
             Vector3 pointVelocity = LinearVelocity + AngularVelocity.Cross(offset);
             float springVelocity = normal.Dot(pointVelocity);
 
-            float force =
-                (compression * SpringStrength - springVelocity * SpringDamping)
-                * Mass
-                / _rayCasts.Count;
+            float force = (compression * _springStrength - springVelocity * _springDamping) * Mass / _rayCasts.Count;
             force = Mathf.Max(force, 0f);
 
             ApplyForce(normal * force, offset);
 
             normalSum += normal;
             if (i < 2)
+            {
                 frontGrounded++;
+            }
             else
+            {
                 rearGrounded++;
+            }
         }
 
         int grounded = frontGrounded + rearGrounded;
-        if (grounded == 0 && !_isOccupied)
-            return;
+        if (grounded == 0 && !_isOccupied) return;
 
         Vector3 groundNormal = normalSum.Normalized();
         Vector3 forward = (-basis.Z).Slide(groundNormal).Normalized();
@@ -243,37 +240,39 @@ public partial class SnowMobile : RigidBody3D
         float forwardSpeed = LinearVelocity.Dot(forward);
 
         float traction = rearGrounded / 2f;
-        if (Mathf.Abs(forwardSpeed) < MaxSpeed || Mathf.Sign(forwardSpeed) != Mathf.Sign(throttle))
-            ApplyCentralForce(forward * throttle * EnginePower * traction);
+        if (Mathf.Abs(forwardSpeed) < _maxSpeed || Mathf.Sign(forwardSpeed) != Mathf.Sign(throttle))
+        {
+            ApplyCentralForce(forward * throttle * _enginePower * traction);
+        }
 
         float lateralSpeed = LinearVelocity.Dot(right);
-        ApplyCentralForce(-right * lateralSpeed * LateralGrip * Mass * (grounded / 4f));
+        ApplyCentralForce(-right * lateralSpeed * _lateralGrip * Mass * (grounded / 4f));
 
         float skiContact = frontGrounded / 2f;
         float speedFactor = Mathf.Clamp(forwardSpeed / 10f, -1f, 1f);
-        ApplyTorque(groundNormal * steer * TurnTorque * speedFactor * skiContact);
+        ApplyTorque(groundNormal * steer * _turnTorque * speedFactor * skiContact);
 
         // Nachylenie Kamery
         CalculateViewOffset(d, LinearVelocity);
 
-        // Kierownica
+        // Kierownica i narty
         float targetAngle = steer * Mathf.DegToRad(_maxSteerAngle);
         _currentSteerAngle = Mathf.Lerp(_currentSteerAngle, targetAngle, d * _steerReturnSpeed);
 
-        Vector3 wheelRot = _steeringNode.Rotation;
+        Vector3 wheelRot = _steeringWheelNode.Rotation;
         wheelRot.Y = _currentSteerAngle;
-        _steeringNode.Rotation = wheelRot;
+        _steeringWheelNode.Rotation = wheelRot;
+        _steeringSkidsNode.Rotation = wheelRot;
 
         // FOV
-        float velocityClamped = Mathf.Clamp(LinearVelocity.Length(), 0.5f, MaxSpeed * 2.0f);
+        float velocityClamped = Mathf.Clamp(LinearVelocity.Length(), 0.5f, _maxSpeed * 2.0f);
         float targetFov = _baseFov + _fovChange + velocityClamped;
         _camera.Fov = Mathf.Lerp(_camera.Fov, targetFov, d * 8.0f);
     }
 
     private void CheckForFlip(float delta)
     {
-        if (!_isOccupied)
-            return;
+        if (!_isOccupied) return;
 
         float upDot = GlobalTransform.Basis.Y.Dot(Vector3.Up);
 
@@ -284,19 +283,25 @@ public partial class SnowMobile : RigidBody3D
         {
             _flipCheckTimer += delta;
 
-            if (_flipCheckTimer >= _flipCheckDelay)
-            {
-                RightVehicle();
-            }
+            if (_flipCheckTimer >= _flipCheck) RightVehicle();
         }
         else
         {
             _flipCheckTimer = 0.0f;
         }
 
+        if (_flipDelayTimer > 0f)
+        {
+            _flipDelayTimer -= delta;
+        }
+
         if (Input.IsActionJustPressed("ResetVehicle"))
         {
-            RightVehicle();
+            if (_flipDelayTimer <= 0)
+            {
+                RightVehicle();
+                _flipDelayTimer = _flipDelay;
+            }
         }
     }
 
