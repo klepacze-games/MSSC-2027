@@ -17,15 +17,6 @@ public partial class SnowMobile : RigidBody3D
     [Export] private Node3D _steeringSkidsNode;
     [Export] private Array<RayCast3D> _rayCasts;
 
-    [ExportCategory("Ustawienia Kamery")]
-    [Export] private float _fovChange = 1.0f;
-    [Export] private bool _enableTilt = true;
-
-    [ExportGroup("Nachylenie")]
-    [Export] private float _cameraTiltSpeed = 10.0f;
-    [Export] private float _driveRoll = 0.25f;
-    [Export] private float _maxRoll = 2.5f;
-
     [ExportCategory("Parametry Pojazdu")]
     [Export] private float _enginePower = 6000f;
     [Export] private float _maxSpeed = 25f;
@@ -41,9 +32,24 @@ public partial class SnowMobile : RigidBody3D
     [Export] private float _springStrength = 40f;
     [Export] private float _springDamping = 8f;
 
-    [ExportCategory("System Przewrócenia")]
+    [ExportCategory("System Przewracania")]
     [Export] private float _flipCheck = 2.0f;
     [Export] private float _flipDelay = 1.5f;
+
+    [ExportCategory("Ustawienia Kamery")]
+    [Export] private float _fovChange = 1.0f;
+    [Export] private bool _enableTilt = true;
+    [Export] private bool _enableFallKick = true;
+
+    [ExportGroup("Nachylenie")]
+    [Export] private float _cameraTiltSpeed = 10.0f;
+    [Export] private float _driveRoll = 0.25f;
+    [Export] private float _maxRoll = 2.5f;
+
+    [ExportGroup("Upadek")]
+    [Export] private float _fallTime = 0.5f;
+    [Export] private float _fallStrength = 20.0f;
+    [Export] private float _fallVelocityThreshold = -5.0f;
 
     // Syngały
     [Signal] public delegate void PlayerEnteredEventHandler();
@@ -64,11 +70,19 @@ public partial class SnowMobile : RigidBody3D
     private bool _isPlayerNearby;
     private CharacterBody3D _nearbyPlayer;
 
-    // Inne
+    // Upadek
+    private float _fallValue = 0f;
+    private float _fallTimer = 0f;
+    private float _currentFallVelocity;
+
+    // Wywracanie
     private float _flipCheckTimer;
     private float _flipDelayTimer;
+
+    // Inne
     private float _currentSteerAngle;
     private double _timeOnVehicle;
+    private bool _wasInAir = false;
     #endregion
 
     public override void _Ready()
@@ -172,7 +186,11 @@ public partial class SnowMobile : RigidBody3D
     private void CalculateViewOffset(float delta, Vector3 velocity)
     {
         Vector3 angles = Vector3.Zero;
+        Vector3 offset = Vector3.Zero;
 
+        _fallTimer -= delta;
+
+        // Nachylenie
         if (_enableTilt)
         {
             Vector3 right = GlobalTransform.Basis.X;
@@ -182,7 +200,42 @@ public partial class SnowMobile : RigidBody3D
             angles.Z += sideTilt;
         }
 
+        // Upadek
+        if (_enableFallKick)
+        {
+            float fallRatio = Mathf.Max(0f, _fallTimer / _fallTime);
+            float fallKickAmount = fallRatio * _fallValue;
+            angles.X -= fallKickAmount;
+            offset.Y -= fallKickAmount;
+        }
+
         _camera.Rotation = _camera.Rotation.Lerp(angles, _cameraTiltSpeed * delta);
+    }
+
+    private void AddFallKick(float fallStrength)
+    {
+        _fallValue = Mathf.DegToRad(fallStrength);
+        _fallTimer = _fallTime;
+    }
+
+    private void OnAirborneStatePhysicsProcessing(int grounded, Vector3 velocity)
+    {
+        if (grounded <= 1)
+        {
+            if (velocity.Y < _currentFallVelocity)
+            {
+                _currentFallVelocity = velocity.Y;
+            }
+        }
+        else
+        {
+            if (_currentFallVelocity < _fallVelocityThreshold)
+            {
+                AddFallKick(_fallStrength);
+            }
+
+            _currentFallVelocity = 0f;
+        }
     }
 
     public override void _PhysicsProcess(double delta)
@@ -263,8 +316,9 @@ public partial class SnowMobile : RigidBody3D
         float speedFactor = Mathf.Clamp(forwardSpeed / 10f, -1f, 1f);
         ApplyTorque(groundNormal * steer * _turnTorque * speedFactor * skiContact);
 
-        // Nachylenie Kamery
+        // Nachylenie Kamery i Upadek
         CalculateViewOffset(d, LinearVelocity);
+        OnAirborneStatePhysicsProcessing(grounded, LinearVelocity);
 
         // Kierownica i narty
         float targetAngle = steer * Mathf.DegToRad(_maxSteerAngle);

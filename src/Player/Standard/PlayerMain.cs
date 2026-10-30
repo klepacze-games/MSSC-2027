@@ -17,7 +17,6 @@ public partial class PlayerMain : CharacterBody3D
 
     [ExportCategory("UStawienia prękdkości i Skoku")]
     [Export] private float _jumpVelocity = 4.5f;
-    [Export] private float _fallVelocityThreshold = -5.0f;
     [Export] private float _acceleration = 2.5f;
     [Export] private float _deceleration = 2.2f;
 
@@ -51,7 +50,8 @@ public partial class PlayerMain : CharacterBody3D
 
     [ExportGroup("Upadek")]
     [Export] private float _fallTime = 0.3f;
-    [Export] private float _fallStrength = 5.0f;
+    [Export] private float _fallStrength = 3.0f;
+    [Export] private float _fallVelocityThreshold = -4f;
 
     // AutoLoad
     private float _mouseSensitivity;
@@ -248,17 +248,11 @@ public partial class PlayerMain : CharacterBody3D
         _fallTimer = _fallTime;
     }
 
-    private bool CheckFallSpeed()
-    {
-        if (_currentFallVelocity < _fallVelocityThreshold) return true;
-        return false;
-    }
-
     private void OnAirborneStatePhysicsProcessing()
     {
         if (IsOnFloor())
         {
-            if (CheckFallSpeed())
+            if (_currentFallVelocity < _fallVelocityThreshold)
                 AddFallKick(_fallStrength);
         }
         _currentFallVelocity = Velocity.Y;

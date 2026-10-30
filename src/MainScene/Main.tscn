@@ -92,3 +92,4 @@ metadata/_edit_lock_ = false
 
 [node name="SnowMobile" parent="." unique_id=1012896474 instance=ExtResource("5_a1iml")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, -15, 7)
+_maxRoll = 7.5
