@@ -17,8 +17,8 @@ public partial class PlayerMain : CharacterBody3D
 
     [ExportCategory("Rodzaje prękdkości i ruchu")]
     [Export] private float _jumpVelocity = 4.5f;
-    [Export] private float _acceleration = 0.5f;
-    [Export] private float _deceleration = 0.3f;
+    [Export] private float _acceleration = 2.0f;
+    [Export] private float _deceleration = 1.8f;
 
     [ExportGroup("Prędkości")]
     [Export] private float _sprintSpeed = 10.0f;
@@ -74,6 +74,7 @@ public partial class PlayerMain : CharacterBody3D
     // Inne
     private Vector3 _standardPosition;
     private Vector3 _targetHeadPosition;
+    private float _targetSpeed;
     private float _timeBob;
     private bool _isOnVehicle;
     #endregion
@@ -242,6 +243,10 @@ public partial class PlayerMain : CharacterBody3D
             _isCrouching = false;
         }
 
+        // Funkcje do działania crouchu i sprintu
+        Crouch();
+        Sprint();
+
         // Sterowanie
         Vector2 inputDir = Input.GetVector("MoveLeft", "MoveRight", "MoveForward", "MoveBackward");
         Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
@@ -249,13 +254,13 @@ public partial class PlayerMain : CharacterBody3D
         {
             if (direction != Vector3.Zero)
             {
-                velocity.X = direction.X * _speed;
-                velocity.Z = direction.Z * _speed;
+                velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * _acceleration);
+                velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * _acceleration);
             }
             else
             {
-                velocity.X = Mathf.Lerp(velocity.X, 0.0f, d * 7.0f);
-                velocity.Z = Mathf.Lerp(velocity.Z, 0.0f, d * 7.0f);
+                velocity.X = Mathf.Lerp(velocity.X, 0.0f, d * _deceleration);
+                velocity.Z = Mathf.Lerp(velocity.Z, 0.0f, d * _deceleration);
             }
         }
         else
@@ -270,10 +275,6 @@ public partial class PlayerMain : CharacterBody3D
         {
             Look(-look.X * _stickSensitivity * d, -look.Y * _stickSensitivity * d);
         }
-
-        // Funkcje do działania crouchu i sprintu
-        Crouch();
-        Sprint();
 
         // Płynne przejście między crouchem i standard position
         Vector3 currentPosition = _head.Position;
