@@ -76,7 +76,6 @@ public partial class PlayerMain : CharacterBody3D
     private Vector3 _targetHeadPosition;
     private float _timeBob;
     private bool _isOnVehicle;
-    private float _staminaBarSizeX;
     #endregion
 
     public override void _Ready()
@@ -99,7 +98,6 @@ public partial class PlayerMain : CharacterBody3D
         Stamina = _maxStamina;
         Input.MouseMode = Input.MouseModeEnum.Captured;
         _standardPosition = _head.Position;
-        _staminaBarSizeX = _staminaBar.Size.X;
     }
 
     private void Look(float yaw, float pitch)
@@ -151,7 +149,7 @@ public partial class PlayerMain : CharacterBody3D
 
     private void UpdateStaminaBar()
     {
-        _staminaBar.SetDeferred(Control.PropertyName.Size, new Vector2(_staminaBarSizeX * Stamina / _maxStamina, _staminaBar.Size.Y));
+        _staminaBar.SetDeferred(Control.PropertyName.Size, new Vector2(1920 * Stamina / _maxStamina, _staminaBar.Size.Y));
     }
 
     public override void _Input(InputEvent @event)
@@ -164,16 +162,17 @@ public partial class PlayerMain : CharacterBody3D
 
     private void OnPlayerEnteredVehicle()
     {
+        if (_isSprinting) _isSprinting = false;
         _isOnVehicle = true;
-        _staminaBeforVehicle = Stamina;
+        _staminaBar.Visible = false;
     }
 
     private void OnPlayerExitedVehicle(double timeSpentOnVehicle)
     {
-        GD.Print(timeSpentOnVehicle);
         _isOnVehicle = false;
         float staminaGained = (float)timeSpentOnVehicle * _staminaRegeneration * 60f;
-        Stamina = Mathf.Min(_staminaBeforVehicle + staminaGained, _maxStamina);
+        Stamina = Mathf.Min(Stamina + staminaGained, _maxStamina);
+        _staminaBar.Visible = true;
 
     }
 

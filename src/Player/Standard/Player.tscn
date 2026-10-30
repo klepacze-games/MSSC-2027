@@ -6,6 +6,13 @@
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_nxl24"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sy87o"]
+bg_color = Color(0.12941177, 0.12941177, 0.12941177, 0.4862745)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
 [node name="Player" type="CharacterBody3D" unique_id=1751409063 node_paths=PackedStringArray("_head", "_camera", "_staminaBar", "_cameraCrouchPosition")]
 script = ExtResource("1_vy1tf")
 _head = NodePath("Head")
@@ -35,7 +42,7 @@ anchor_bottom = 1.0
 offset_top = -15.0
 grow_horizontal = 2
 grow_vertical = 0
-size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_sy87o")
 
 [node name="CameraCrouchPosition" type="Node3D" parent="." unique_id=390477803]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14143154, -0.489)
