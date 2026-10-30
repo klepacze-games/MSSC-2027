@@ -142,7 +142,7 @@ public partial class SnowMobile : RigidBody3D
         _driver.ProcessMode = ProcessModeEnum.Disabled;
 
         _camera.MakeCurrent();
-        EmitSignal(SignalName.PlayerEntered);
+        EmitSignalPlayerEntered();
 
         SetPhysicsProcess(true);
     }
@@ -163,7 +163,7 @@ public partial class SnowMobile : RigidBody3D
         playerCamera.MakeCurrent();
 
         _isOccupied = false;
-        EmitSignal(SignalName.PlayerExited, _timeOnVehicle);
+        EmitSignalPlayerExited(_timeOnVehicle);
         _driver = null;
     }
 
