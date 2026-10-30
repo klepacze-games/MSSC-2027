@@ -18,9 +18,9 @@ public partial class SnowMobile : RigidBody3D
     [Export] private Array<RayCast3D> _rayCasts;
 
     [ExportCategory("Parametry Pojazdu")]
-    [Export] private float _enginePower = 6000f;
+    [Export] private float _enginePower = 60f;
     [Export] private float _maxSpeed = 25f;
-    [Export] private float _turnTorque = 2500f;
+    [Export] private float _turnTorque = 25f;
     [Export] private float _lateralGrip = 4f;
 
     [ExportCategory("Kierownica")]
@@ -306,7 +306,7 @@ public partial class SnowMobile : RigidBody3D
         if (Mathf.Abs(forwardSpeed) < _maxSpeed || Mathf.Sign(forwardSpeed) != Mathf.Sign(throttle))
         {
             if (throttle < 0) throttle = -0.25f;
-            ApplyCentralForce(forward * throttle * _enginePower * traction);
+            ApplyCentralForce(forward * throttle * _enginePower * 100f * traction);
         }
 
         float lateralSpeed = LinearVelocity.Dot(right);
@@ -314,7 +314,7 @@ public partial class SnowMobile : RigidBody3D
 
         float skiContact = frontGrounded / 2f;
         float speedFactor = Mathf.Clamp(forwardSpeed / 10f, -1f, 1f);
-        ApplyTorque(groundNormal * steer * _turnTorque * speedFactor * skiContact);
+        ApplyTorque(groundNormal * steer * _turnTorque * 100 * speedFactor * skiContact);
 
         // Nachylenie Kamery i Upadek
         CalculateViewOffset(d, LinearVelocity);
