@@ -45,4 +45,4 @@ grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_sy87o")
 
 [node name="CameraCrouchPosition" type="Node3D" parent="." unique_id=390477803]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14143154, -0.489)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03759703, -0.489)
