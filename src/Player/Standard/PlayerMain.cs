@@ -13,6 +13,7 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private Camera3D _camera;
     [Export] private Panel _staminaBar;
     [Export] private Node3D _cameraCrouchPosition;
+    [Export] private AnimationTree _animTree;
     [Export] private SnowMobile _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
 
     [ExportCategory("UStawienia prękdkości i Skoku")]
@@ -35,6 +36,7 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private float _fovChange = 1.5f;
     [Export] private bool _enableTilt = true;
     [Export] private bool _enableBob = true;
+    [Export] private bool _enableBobX = true;
     [Export] private bool _enableFallKick = true;
 
     [ExportGroup("Nachylenie")]
@@ -193,7 +195,7 @@ public partial class PlayerMain : CharacterBody3D
     {
         Vector3 pos = Vector3.Zero;
         pos.Y = Mathf.Sin(time * _bobFrequency) * _bobAmplitude;
-        pos.X = Mathf.Cos(time * _bobFrequency / 2) * _bobAmplitude;
+        if (_enableBobX) pos.X = Mathf.Cos(time * _bobFrequency / 2) * _bobAmplitude;
         return pos;
     }
 
@@ -341,6 +343,9 @@ public partial class PlayerMain : CharacterBody3D
         float velocityClamped = Mathf.Clamp(velocity.Length(), 0.5f, _sprintSpeed * 2.0f);
         float targetFov = _baseFov + _fovChange + velocityClamped;
         _camera.Fov = Mathf.Lerp(_camera.Fov, targetFov, d * 8.0f);
+
+        // Animacje
+        _animTree.Set("parameters/WalkRun/blend_position", velocity.Length() / _speed);
 
         Velocity = velocity;
         MoveAndSlide();
