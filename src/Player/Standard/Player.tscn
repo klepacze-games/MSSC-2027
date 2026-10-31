@@ -6,12 +6,19 @@
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_nxl24"]
 
-[node name="Player" type="CharacterBody3D" unique_id=1751409063 node_paths=PackedStringArray("Head", "Camera", "StaminaBar", "CameraCrouchPosition")]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sy87o"]
+bg_color = Color(0.12941177, 0.12941177, 0.12941177, 0.4862745)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="Player" type="CharacterBody3D" unique_id=1751409063 node_paths=PackedStringArray("_head", "_camera", "_staminaBar", "_cameraCrouchPosition")]
 script = ExtResource("1_vy1tf")
-Head = NodePath("Head")
-Camera = NodePath("Head/Camera")
-StaminaBar = NodePath("Gui/StaminaBar")
-CameraCrouchPosition = NodePath("CameraCrouchPosition")
+_head = NodePath("Head")
+_camera = NodePath("Head/Camera")
+_staminaBar = NodePath("Gui/StaminaBar")
+_cameraCrouchPosition = NodePath("CameraCrouchPosition")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=453194025]
 shape = SubResource("CapsuleShape3D_nxl24")
@@ -35,6 +42,7 @@ anchor_bottom = 1.0
 offset_top = -15.0
 grow_horizontal = 2
 grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_sy87o")
 
 [node name="CameraCrouchPosition" type="Node3D" parent="." unique_id=390477803]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14143154, -0.489)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03759703, -0.489)

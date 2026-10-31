@@ -1,4 +1,5 @@
 using Godot;
+using MSSC2027.Vehicles.SnowMobile;
 using GameManager = MSSC2027.AutoLoad.GameManager;
 
 namespace MSSC2027.Player.Standard;
@@ -12,11 +13,12 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private Camera3D _camera;
     [Export] private Panel _staminaBar;
     [Export] private Node3D _cameraCrouchPosition;
+    [Export] private SnowMobile _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
 
-    [ExportCategory("Rodzaje prękdkości i ruchu")]
+    [ExportCategory("UStawienia prękdkości i Skoku")]
     [Export] private float _jumpVelocity = 4.5f;
-    [Export] private float _acceleration = 0.5f;
-    [Export] private float _deceleration = 0.3f;
+    [Export] private float _acceleration = 2.5f;
+    [Export] private float _deceleration = 2.2f;
 
     [ExportGroup("Prędkości")]
     [Export] private float _sprintSpeed = 10.0f;
@@ -33,6 +35,7 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private float _fovChange = 1.5f;
     [Export] private bool _enableTilt = true;
     [Export] private bool _enableBob = true;
+    [Export] private bool _enableFallKick = true;
 
     [ExportGroup("Nachylenie")]
     [Export] private float _cameraTiltSpeed = 10.0f;
@@ -45,6 +48,11 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private float _bobFrequency = 2.0f;
     [Export] private float _bobAmplitude = 0.08f;
 
+    [ExportGroup("Upadek")]
+    [Export] private float _fallTime = 0.3f;
+    [Export] private float _fallStrength = 3.0f;
+    [Export] private float _fallVelocityThreshold = -4f;
+
     // AutoLoad
     private float _mouseSensitivity;
     private float _stickSensitivity;
@@ -52,8 +60,9 @@ public partial class PlayerMain : CharacterBody3D
 
     // Stamina i speed
     private float _speed;
+    private float _staminaBeforVehicle;
     private float _stamina;
-    private float Stamina
+    public float Stamina
     {
         get => _stamina;
         set
@@ -68,10 +77,18 @@ public partial class PlayerMain : CharacterBody3D
     private bool _isCrouching;
     private bool _isExhausted;
 
-    // Inne
-    private Vector3 _standardPosition;
+    // Ustawienia Głowy
+    private Vector3 _standardHeadPosition;
     private Vector3 _targetHeadPosition;
+
+    // Upadek
+    private float _fallValue = 0f;
+    private float _fallTimer = 0f;
+    private float _currentFallVelocity;
+
+    // Inne
     private float _timeBob;
+    private bool _isOnVehicle;
     #endregion
 
     public override void _Ready()
@@ -81,19 +98,26 @@ public partial class PlayerMain : CharacterBody3D
         _stickSensitivity = GameManager.Instance.StickSensitivity;
         _baseFov = GameManager.Instance.BaseFov;
 
+        // Podpinanie sygnałów od skutera
+        if (_snowMobile != null)
+        {
+            _snowMobile.PlayerEntered += OnPlayerEnteredVehicle;
+            _snowMobile.PlayerExited += OnPlayerExitedVehicle;
+        }
+
         // Ustawianie domyślnych wartości
         _camera.Fov = _baseFov;
         _speed = _standardSpeed;
         Stamina = _maxStamina;
         Input.MouseMode = Input.MouseModeEnum.Captured;
-        _standardPosition = _head.Position;
+        _standardHeadPosition = _head.Position;
     }
 
     private void Look(float yaw, float pitch)
     {
         RotateY(yaw);
         _head.RotateX(pitch);
-        var rot = _head.Rotation;
+        Vector3 rot = _head.Rotation;
         rot.X = Mathf.Clamp(rot.X, Mathf.DegToRad(-89f), Mathf.DegToRad(89f));
         _head.Rotation = rot;
     }
@@ -107,14 +131,14 @@ public partial class PlayerMain : CharacterBody3D
         }
         else
         {
-            _targetHeadPosition = _standardPosition;
+            _targetHeadPosition = _standardHeadPosition;
             _speed = _standardSpeed;
         }
     }
 
-    private void Sprint()
+    private void Sprint(Vector3 direction)
     {
-        if (_isSprinting)
+        if (_isSprinting && direction != Vector3.Zero)
         {
             _speed = _sprintSpeed;
             Stamina = Mathf.Max(0.0f, Stamina - _staminaDrain);
@@ -125,30 +149,44 @@ public partial class PlayerMain : CharacterBody3D
         }
         else
         {
-            if (Stamina < _maxStamina)
-                Stamina = Mathf.Min(_maxStamina, Stamina + _staminaRegeneration);
-            if (_isExhausted && Stamina >= _minStaminaToSprint)
-                _isExhausted = false;
+            if (!_isOnVehicle)
+            {
+                if (Stamina < _maxStamina)
+                    Stamina = Mathf.Min(_maxStamina, Stamina + _staminaRegeneration);
+
+                if (_isExhausted && Stamina >= _minStaminaToSprint)
+                    _isExhausted = false;
+            }
         }
     }
 
     private void UpdateStaminaBar()
     {
-        _staminaBar.SetDeferred(
-            Control.PropertyName.Size,
-            new Vector2(1920 * Stamina / _maxStamina, _staminaBar.Size.Y)
-        );
+        _staminaBar.SetDeferred(Control.PropertyName.Size, new Vector2(1920 * Stamina / _maxStamina, _staminaBar.Size.Y));
     }
 
     public override void _Input(InputEvent @event)
     {
         if (@event is InputEventMouseMotion mouseMotion && Input.MouseMode == Input.MouseModeEnum.Captured)
         {
-            Look(
-                -mouseMotion.Relative.X * _mouseSensitivity,
-                -mouseMotion.Relative.Y * _mouseSensitivity
-            );
+            Look(-mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
         }
+    }
+
+    private void OnPlayerEnteredVehicle()
+    {
+        if (_isSprinting) _isSprinting = false;
+        _isOnVehicle = true;
+        _staminaBar.Visible = false;
+    }
+
+    private void OnPlayerExitedVehicle(double timeSpentOnVehicle)
+    {
+        _isOnVehicle = false;
+        float staminaGained = (float)timeSpentOnVehicle * _staminaRegeneration * 60f;
+        Stamina = Mathf.Min(Stamina + staminaGained, _maxStamina);
+        _staminaBar.Visible = true;
+
     }
 
     private Vector3 HeadBob(float time)
@@ -162,30 +200,62 @@ public partial class PlayerMain : CharacterBody3D
     private void CalculateViewOffset(float delta, Vector3 velocity)
     {
         Vector3 angles = Vector3.Zero;
+        Vector3 offset = Vector3.Zero;
 
+        _fallTimer -= delta;
+
+        // Nachylenie
         if (_enableTilt)
         {
             Vector3 forward = GlobalTransform.Basis.Z;
             Vector3 right = GlobalTransform.Basis.X;
 
             float forwardDot = velocity.Dot(forward);
-            float forwardTilt = Mathf.Clamp(
-                forwardDot * Mathf.DegToRad(_runPitch),
-                Mathf.DegToRad(-_maxPitch),
-                Mathf.DegToRad(_maxPitch)
-            );
+            float forwardTilt = Mathf.Clamp(forwardDot * Mathf.DegToRad(_runPitch), Mathf.DegToRad(-_maxPitch), Mathf.DegToRad(_maxPitch));
             angles.X += forwardTilt;
 
             float rightDot = velocity.Dot(right);
-            float sideTilt = Mathf.Clamp(
-                rightDot * Mathf.DegToRad(_runRoll),
-                Mathf.DegToRad(-_maxRoll),
-                Mathf.DegToRad(_maxRoll)
-            );
+            float sideTilt = Mathf.Clamp(rightDot * Mathf.DegToRad(_runRoll), Mathf.DegToRad(-_maxRoll), Mathf.DegToRad(_maxRoll));
             angles.Z -= sideTilt;
         }
 
+        // Upadek
+        if (_enableFallKick)
+        {
+            float fallRatio = Mathf.Max(0f, _fallTimer / _fallTime);
+            float fallKickAmount = fallRatio * _fallValue;
+            angles.X -= fallKickAmount;
+            offset.Y -= fallKickAmount;
+        }
+
+        // Kiwanie Głową
+        if (_enableBob)
+        {
+            if (IsOnFloor() && velocity.Length() > 0.1f)
+            {
+                _timeBob += delta * velocity.Length();
+            }
+            offset += HeadBob(_timeBob);
+        }
+
+        _camera.Position = offset;
         _camera.Rotation = _camera.Rotation.Lerp(angles, _cameraTiltSpeed * delta);
+    }
+
+    private void AddFallKick(float fallStrength)
+    {
+        _fallValue = Mathf.DegToRad(fallStrength);
+        _fallTimer = _fallTime;
+    }
+
+    private void OnAirborneStatePhysicsProcessing()
+    {
+        if (IsOnFloor())
+        {
+            if (_currentFallVelocity < _fallVelocityThreshold)
+                AddFallKick(_fallStrength);
+        }
+        _currentFallVelocity = Velocity.Y;
     }
 
     public override void _PhysicsProcess(double delta)
@@ -232,13 +302,13 @@ public partial class PlayerMain : CharacterBody3D
         {
             if (direction != Vector3.Zero)
             {
-                velocity.X = direction.X * _speed;
-                velocity.Z = direction.Z * _speed;
+                velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * _acceleration);
+                velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * _acceleration);
             }
             else
             {
-                velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * 7.0f);
-                velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * 7.0f);
+                velocity.X = Mathf.Lerp(velocity.X, 0.0f, d * _deceleration);
+                velocity.Z = Mathf.Lerp(velocity.Z, 0.0f, d * _deceleration);
             }
         }
         else
@@ -247,6 +317,10 @@ public partial class PlayerMain : CharacterBody3D
             velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * 3.0f);
         }
 
+        // Funkcje do działania crouchu i sprintu
+        Crouch();
+        Sprint(direction);
+
         // Obracanie kamerą na gamepadzie
         Vector2 look = Input.GetVector("LookLeft", "LookRight", "LookUp", "LookDown");
         if (look != Vector2.Zero)
@@ -254,29 +328,14 @@ public partial class PlayerMain : CharacterBody3D
             Look(-look.X * _stickSensitivity * d, -look.Y * _stickSensitivity * d);
         }
 
-        // Funkcje do działania crouchu i sprintu
-        Crouch();
-        Sprint();
-
         // Płynne przejście między crouchem i standard position
         Vector3 currentPosition = _head.Position;
         currentPosition.Y = Mathf.Lerp(currentPosition.Y, _targetHeadPosition.Y, 7.0f * d);
         _head.Position = currentPosition;
 
-        // Kiwanie głową
-        if (_enableBob)
-        {
-            if (IsOnFloor() && velocity.Length() > 0.1f)
-            {
-                _timeBob += d * velocity.Length();
-            }
-            Vector3 camPos = _camera.Position;
-            camPos.Y = HeadBob(_timeBob).Y;
-            _camera.Position = camPos;
-        }
-
-        // Nachylenie Kamery
+        // Nachylenie Kamery i Upadek
         CalculateViewOffset(d, velocity);
+        OnAirborneStatePhysicsProcessing();
 
         // FOV
         float velocityClamped = Mathf.Clamp(velocity.Length(), 0.5f, _sprintSpeed * 2.0f);
