@@ -134,6 +134,7 @@ public partial class PlayerMain : CharacterBody3D
         Stamina = Mathf.Min(Stamina + staminaGained, _maxStamina);
         _staminaBar.Visible = true;
 
+
     }
 
     public override void _PhysicsProcess(double delta)
