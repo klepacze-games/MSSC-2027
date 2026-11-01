@@ -14,6 +14,7 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private Panel _staminaBar;
     [Export] private Node3D _cameraCrouchPosition;
     [Export] private AnimationTree _animTree;
+    [Export] private Node3D _armature;
     [Export] private SnowMobile _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
 
     [ExportCategory("UStawienia prękdkości i Skoku")]
@@ -91,6 +92,7 @@ public partial class PlayerMain : CharacterBody3D
     // Inne
     private float _timeBob;
     private bool _isOnVehicle;
+    private Vector3 _standardArmaturePosition;
     #endregion
 
     public override void _Ready()
@@ -113,6 +115,7 @@ public partial class PlayerMain : CharacterBody3D
         Stamina = _maxStamina;
         Input.MouseMode = Input.MouseModeEnum.Captured;
         _standardHeadPosition = _head.Position;
+        _standardArmaturePosition = _armature.Position;
     }
 
     private void Look(float yaw, float pitch)
@@ -203,6 +206,7 @@ public partial class PlayerMain : CharacterBody3D
     {
         Vector3 angles = Vector3.Zero;
         Vector3 offset = Vector3.Zero;
+        Vector3 armOffset = Vector3.Zero;
 
         _fallTimer -= delta;
 
@@ -238,9 +242,11 @@ public partial class PlayerMain : CharacterBody3D
                 _timeBob += delta * velocity.Length();
             }
             offset += HeadBob(_timeBob);
+            armOffset += HeadBob(_timeBob);
         }
 
-        _camera.Position = offset;
+        _armature.Position = armOffset + _standardArmaturePosition;
+        _head.Position = offset + _standardHeadPosition;
         _camera.Rotation = _camera.Rotation.Lerp(angles, _cameraTiltSpeed * delta);
     }
 
