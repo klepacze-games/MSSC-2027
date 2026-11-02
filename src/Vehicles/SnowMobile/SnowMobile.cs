@@ -159,7 +159,7 @@ public partial class SnowMobile : RigidBody3D
         _driver.Visible = true;
         _driver.ProcessMode = ProcessModeEnum.Inherit;
 
-        Camera3D playerCamera = _driver.GetNode<Node3D>("CameraController").GetNode<Camera3D>("Camera");
+        Camera3D playerCamera = _driver.GetNode<Node3D>("Head").GetNode<Camera3D>("Camera");
         playerCamera.MakeCurrent();
 
         _isOccupied = false;

@@ -65,25 +65,24 @@ public partial class CameraController : Node3D
 
     public override void _Ready()
     {
-        if (_head != null) _standardHeadPosition = _head.Position;
-        if (_armature != null) _standardArmaturePosition = _armature.Position;
+        _standardHeadPosition = _head.Position;
+        _standardArmaturePosition = _armature.Position;
         _targetHeadPosition = _standardHeadPosition;
     }
 
     public void Initialize(float baseFov)
     {
         _baseFov = baseFov;
-        if (_camera != null) _camera.Fov = _baseFov;
+        _camera.Fov = _baseFov;
     }
 
     public void Look(Node3D playerBody, float yaw, float pitch)
     {
         playerBody.RotateY(yaw);
-        if (_head == null) return;
-        RotateX(pitch);
-        Vector3 rot = Rotation;
+        _head.RotateX(pitch);
+        Vector3 rot = _head.Rotation;
         rot.X = Mathf.Clamp(rot.X, Mathf.DegToRad(-89f), Mathf.DegToRad(89f));
-        Rotation = rot;
+        _head.Rotation = rot;
     }
 
     public void Crouch(bool isCrouching, float delta)
@@ -96,9 +95,11 @@ public partial class CameraController : Node3D
         {
             _targetHeadPosition = _standardHeadPosition;
         }
-        Vector3 currentPos = Position;
+
+
+        Vector3 currentPos = _head.Position;
         currentPos.Y = Mathf.Lerp(currentPos.Y, _targetHeadPosition.Y, 7.0f * delta);
-        Position = currentPos;
+        _head.Position = currentPos;
     }
 
     public void CalculateViewOffset(float delta, Vector3 velocity, bool isOnFloor, float sprintSpeed)
@@ -143,7 +144,8 @@ public partial class CameraController : Node3D
             offset += HeadBob(_timeBob);
             armOffset += HeadBob(_timeBob);
         }
-        Position = offset + _standardHeadPosition;
+
+        _head.Position = offset + _standardHeadPosition;
         if (_armature != null) _armature.Position = armOffset + _standardArmaturePosition;
 
         if (_camera != null)

@@ -14,6 +14,15 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private AnimationTree _animTree;
     [Export] private SnowMobile _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
 
+    [ExportGroup("Animacje")]
+    [Export] private string _locomotionStatePlaybackPath;
+    [Export] private string _locomotionBlendPath;
+    [Export] private string _crouchingBlendPath;
+    [Export] private string _jumpingStateName;
+    [Export] private string _fallingStateName;
+    [Export] private string _walkingStateName;
+    [Export] private string _crouchingStateName;
+
     [ExportCategory("UStawienia prękdkości i Skoku")]
     [Export] private float _jumpVelocity = 4.5f;
     [Export] private float _acceleration = 2.5f;
@@ -54,34 +63,17 @@ public partial class PlayerMain : CharacterBody3D
     private bool _isCrouching;
     private bool _isExhausted;
     private bool _isOnVehicle;
+    private bool _isFalling;
+    private bool _isJumpQueued;
+    public bool CanMove;
 
-    // Upadek
+    // Inne
     private float _currentFallVelocity;
+    private AnimationNodeStateMachinePlayback _playback;
+    private float _jumpDelayTimer = 0f;
     #endregion
 
-    public override void _Ready()
-    {
-        // AutoLoad
-        _mouseSensitivity = GameManager.Instance.MouseSensitivity;
-        _stickSensitivity = GameManager.Instance.StickSensitivity;
-        _baseFov = GameManager.Instance.BaseFov;
-
-        // Inicjalizcja Kamery
-        _cameraController.Initialize(_baseFov);
-
-        // Podpinanie sygnałów od skutera
-        if (_snowMobile != null)
-        {
-            _snowMobile.PlayerEntered += OnPlayerEnteredVehicle;
-            _snowMobile.PlayerExited += OnPlayerExitedVehicle;
-        }
-
-        // Ustawianie domyślnych wartości
-        _speed = _standardSpeed;
-        Stamina = _maxStamina;
-        Input.MouseMode = Input.MouseModeEnum.Captured;
-    }
-
+    #region Lokalne Funkcje
     private void Sprint(Vector3 direction)
     {
         if (_isSprinting && direction != Vector3.Zero)
@@ -112,14 +104,6 @@ public partial class PlayerMain : CharacterBody3D
         _staminaBar.SetDeferred(Control.PropertyName.Size, new Vector2(1920 * Stamina / _maxStamina, _staminaBar.Size.Y));
     }
 
-    public override void _Input(InputEvent @event)
-    {
-        if (@event is InputEventMouseMotion mouseMotion && Input.MouseMode == Input.MouseModeEnum.Captured)
-        {
-            _cameraController.Look(this, -mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
-        }
-    }
-
     private void OnPlayerEnteredVehicle()
     {
         if (_isSprinting) _isSprinting = false;
@@ -133,12 +117,53 @@ public partial class PlayerMain : CharacterBody3D
         float staminaGained = (float)timeSpentOnVehicle * _staminaRegeneration * 60f;
         Stamina = Mathf.Min(Stamina + staminaGained, _maxStamina);
         _staminaBar.Visible = true;
+    }
+    #endregion
 
+    public override void _Ready()
+    {
+        _playback = (AnimationNodeStateMachinePlayback)_animTree.Get(_locomotionStatePlaybackPath);
 
+        // AutoLoad
+        _mouseSensitivity = GameManager.Instance.MouseSensitivity;
+        _stickSensitivity = GameManager.Instance.StickSensitivity;
+        _baseFov = GameManager.Instance.BaseFov;
+
+        // Inicjalizcja Kamery
+        _cameraController.Initialize(_baseFov);
+
+        // Podpinanie sygnałów od skutera
+        if (_snowMobile != null)
+        {
+            _snowMobile.PlayerEntered += OnPlayerEnteredVehicle;
+            _snowMobile.PlayerExited += OnPlayerExitedVehicle;
+        }
+
+        // Ustawianie domyślnych wartości
+        _speed = _standardSpeed;
+        Stamina = _maxStamina;
+        Input.MouseMode = Input.MouseModeEnum.Captured;
+        CanMove = true;
+    }
+
+    public override void _Process(double delta)
+    {
+        _animTree.Set(_locomotionBlendPath, Velocity.Length());
+        _animTree.Set(_crouchingBlendPath, Velocity.Length());
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        if (!CanMove) return;
+        if (@event is InputEventMouseMotion mouseMotion && Input.MouseMode == Input.MouseModeEnum.Captured)
+        {
+            _cameraController.Look(this, -mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
+        }
     }
 
     public override void _PhysicsProcess(double delta)
     {
+        if (!CanMove) return;
         Vector3 velocity = Velocity;
         float d = (float)delta;
 
@@ -146,6 +171,26 @@ public partial class PlayerMain : CharacterBody3D
         if (!IsOnFloor())
         {
             velocity += GetGravity() * d * 1.5f;
+            if (!_isFalling)
+            {
+                _isFalling = true;
+                _playback.Travel(_fallingStateName);
+            }
+        }
+        else if (_isFalling)
+        {
+            _isFalling = false;
+            _playback.Travel(_walkingStateName);
+        }
+
+        if (_isJumpQueued)
+        {
+            _jumpDelayTimer -= d;
+            if (_jumpDelayTimer <= 0f)
+            {
+                velocity.Y = _jumpVelocity;
+                _isJumpQueued = false;
+            }
         }
 
         // Sterowanie
@@ -153,9 +198,12 @@ public partial class PlayerMain : CharacterBody3D
         Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
 
         // Skok
-        if (Input.IsActionJustPressed("Jump") && IsOnFloor() && !_isCrouching)
+        if (Input.IsActionJustPressed("Jump") && IsOnFloor() && !_isCrouching && !_isJumpQueued)
         {
-            velocity.Y = _jumpVelocity;
+            _playback.Travel(_jumpingStateName);
+
+            _jumpDelayTimer = 0.3f;
+            _isJumpQueued = true;
         }
 
         // Sprint
@@ -180,11 +228,13 @@ public partial class PlayerMain : CharacterBody3D
         {
             _isCrouching = true;
             _speed = _crouchSpeed;
+            _playback.Travel(_crouchingStateName);
         }
         if (Input.IsActionJustReleased("Crouch") && !_isSprinting)
         {
             _isCrouching = false;
             _speed = _standardSpeed;
+            _playback.Travel(_walkingStateName);
         }
 
         if (IsOnFloor())
@@ -217,9 +267,6 @@ public partial class PlayerMain : CharacterBody3D
         _cameraController.CalculateViewOffset(d, velocity, IsOnFloor(), _sprintSpeed);
         _cameraController.CheckLandingFall(IsOnFloor(), _currentFallVelocity);
         _currentFallVelocity = velocity.Y;
-
-        // Animacje
-        _animTree.Set("parameters/WalkRun/blend_position", velocity.Length() / _speed);
 
         Velocity = velocity;
         MoveAndSlide();
