@@ -9,8 +9,9 @@ public partial class CameraController : Node3D
     [ExportCategory("Referencje")]
     [Export] private Node3D _head;
     [Export] private Camera3D _camera;
-    [Export] private Node3D _cameraCrouchPosition;
+    [Export] private Node3D _cameraCrouchNode;
     [Export] private Node3D _armature;
+    [Export] private CollisionShape3D _hitBox;
 
     [ExportCategory("Ustawienia Kamery")]
     [Export] private float _fovChange = 1.5f;
@@ -35,16 +36,20 @@ public partial class CameraController : Node3D
     [Export] private float _fallStrength = 3.0f;
     [Export] private float _fallVelocityThreshold = -4f;
 
-    // Standardowe Wartości
+    // Bazowe Wartości
     private float _baseFov;
-    private Vector3 _standardHeadPosition;
-    private Vector3 _targetHeadPosition;
-    private Vector3 _standardArmaturePosition;
+    private Vector3 _baseHeadPosition;
+    private float _baseCapsuleHeight;
+    private Vector3 _baseArmaturePosition;
+    private const float _heightDifference = 0.44f;
 
     // Upadek
     private float _timeBob;
     private float _fallValue = 0f;
     private float _fallTimer = 0f;
+
+    // Inne
+    private Vector3 _targetHeadPosition;
     #endregion
 
     #region Lokalne Funkcje
@@ -65,9 +70,10 @@ public partial class CameraController : Node3D
 
     public override void _Ready()
     {
-        _standardHeadPosition = _head.Position;
-        _standardArmaturePosition = _armature.Position;
-        _targetHeadPosition = _standardHeadPosition;
+        _baseHeadPosition = _head.Position;
+        _baseArmaturePosition = _armature.Position;
+        _targetHeadPosition = _baseHeadPosition;
+        if (_hitBox.Shape is CapsuleShape3D capsule) _baseCapsuleHeight = capsule.Height;
     }
 
     public void Initialize(float baseFov)
@@ -85,28 +91,24 @@ public partial class CameraController : Node3D
         _head.Rotation = rot;
     }
 
-    public void Crouch(bool isCrouching, float delta)
+    public void Crouch(bool isCrouching)
     {
         if (isCrouching)
         {
-            _targetHeadPosition = _cameraCrouchPosition.Position;
+            _targetHeadPosition = _cameraCrouchNode.Position;
+            if (_hitBox.Shape is CapsuleShape3D capsule) capsule.Height = _baseCapsuleHeight - _heightDifference;
         }
         else
         {
-            _targetHeadPosition = _standardHeadPosition;
+            _targetHeadPosition = _baseHeadPosition;
+            if (_hitBox.Shape is CapsuleShape3D capsule) capsule.Height = _baseCapsuleHeight;
         }
-
-
-        Vector3 currentPos = _head.Position;
-        currentPos.Y = Mathf.Lerp(currentPos.Y, _targetHeadPosition.Y, 7.0f * delta);
-        _head.Position = currentPos;
     }
 
     public void CalculateViewOffset(float delta, Vector3 velocity, bool isOnFloor, float sprintSpeed)
     {
         Vector3 angles = Vector3.Zero;
         Vector3 offset = Vector3.Zero;
-        Vector3 armOffset = Vector3.Zero;
 
         _fallTimer -= delta;
 
@@ -142,11 +144,15 @@ public partial class CameraController : Node3D
                 _timeBob += delta * velocity.Length();
             }
             offset += HeadBob(_timeBob);
-            armOffset += HeadBob(_timeBob);
         }
 
-        _head.Position = offset + _standardHeadPosition;
-        if (_armature != null) _armature.Position = armOffset + _standardArmaturePosition;
+        Vector3 currentHeadPos = _head.Position;
+        currentHeadPos.Y = Mathf.Lerp(currentHeadPos.Y, offset.Y + _targetHeadPosition.Y, 7f * delta);
+        _head.Position = currentHeadPos;
+
+        Vector3 currentArmPos = _armature.Position;
+        currentArmPos.Y = Mathf.Lerp(currentArmPos.Y, offset.Y + _baseArmaturePosition.Y, 7f * delta);
+        _armature.Position = currentArmPos;
 
         if (_camera != null)
         {

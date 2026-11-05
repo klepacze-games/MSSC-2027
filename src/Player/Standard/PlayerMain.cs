@@ -159,6 +159,21 @@ public partial class PlayerMain : CharacterBody3D
         {
             _cameraController.Look(this, -mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
         }
+
+        if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
+        {
+            _isCrouching = true;
+            _speed = _crouchSpeed;
+            _playback.Travel(_crouchingStateName);
+            _cameraController.Crouch(_isCrouching);
+        }
+        if (Input.IsActionJustReleased("Crouch") && !_isSprinting)
+        {
+            _isCrouching = false;
+            _speed = _standardSpeed;
+            _playback.Travel(_walkingStateName);
+            _cameraController.Crouch(_isCrouching);
+        }
     }
 
     public override void _PhysicsProcess(double delta)
@@ -170,7 +185,7 @@ public partial class PlayerMain : CharacterBody3D
         // Grawitacja
         if (!IsOnFloor())
         {
-            velocity += GetGravity() * d * 1.5f;
+            velocity += GetGravity() * d * 1f;
             if (!_isFalling)
             {
                 _isFalling = true;
@@ -183,27 +198,15 @@ public partial class PlayerMain : CharacterBody3D
             _playback.Travel(_walkingStateName);
         }
 
-        if (_isJumpQueued)
-        {
-            _jumpDelayTimer -= d;
-            if (_jumpDelayTimer <= 0f)
-            {
-                velocity.Y = _jumpVelocity;
-                _isJumpQueued = false;
-            }
-        }
-
         // Sterowanie
         Vector2 inputDir = Input.GetVector("MoveLeft", "MoveRight", "MoveForward", "MoveBackward");
         Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
 
         // Skok
-        if (Input.IsActionJustPressed("Jump") && IsOnFloor() && !_isCrouching && !_isJumpQueued)
+        if (Input.IsActionJustPressed("Jump") && IsOnFloor() && !_isCrouching)
         {
-            _playback.Travel(_jumpingStateName);
-
-            _jumpDelayTimer = 0.3f;
-            _isJumpQueued = true;
+            _playback.Travel(_fallingStateName);
+            velocity.Y = _jumpVelocity;
         }
 
         // Sprint
@@ -221,20 +224,6 @@ public partial class PlayerMain : CharacterBody3D
         {
             _isSprinting = false;
             _speed = _isCrouching ? _crouchSpeed : _standardSpeed;
-        }
-
-        // Zarządzanie crouchem
-        if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
-        {
-            _isCrouching = true;
-            _speed = _crouchSpeed;
-            _playback.Travel(_crouchingStateName);
-        }
-        if (Input.IsActionJustReleased("Crouch") && !_isSprinting)
-        {
-            _isCrouching = false;
-            _speed = _standardSpeed;
-            _playback.Travel(_walkingStateName);
         }
 
         if (IsOnFloor())
@@ -263,11 +252,11 @@ public partial class PlayerMain : CharacterBody3D
         if (look != Vector2.Zero)
             _cameraController.Look(this, -look.X * _stickSensitivity * d, -look.Y * _stickSensitivity * d);
 
-        _cameraController.Crouch(_isCrouching, d);
+        // Efekty kamery
         _cameraController.CalculateViewOffset(d, velocity, IsOnFloor(), _sprintSpeed);
         _cameraController.CheckLandingFall(IsOnFloor(), _currentFallVelocity);
         _currentFallVelocity = velocity.Y;
-
+        
         Velocity = velocity;
         MoveAndSlide();
     }
