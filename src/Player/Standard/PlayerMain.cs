@@ -10,6 +10,7 @@ public partial class PlayerMain : CharacterBody3D
     // Eksporty
     [ExportCategory("Referencje")]
     [Export] private CameraController _cameraController;
+    [Export] private InventoryController _inventoryController;
     [Export] private Panel _staminaBar;
     [Export] private AnimationTree _animTree;
     [Export] private SnowMobile _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
@@ -18,7 +19,7 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private string _locomotionStatePlaybackPath;
     [Export] private string _locomotionBlendPath;
     [Export] private string _crouchingBlendPath;
-    [Export] private string _jumpingStateName;
+    [Export] private string _inventoryStateName;
     [Export] private string _fallingStateName;
     [Export] private string _walkingStateName;
     [Export] private string _crouchingStateName;
@@ -64,13 +65,14 @@ public partial class PlayerMain : CharacterBody3D
     private bool _isExhausted;
     private bool _isOnVehicle;
     private bool _isFalling;
-    private bool _isJumpQueued;
+    private bool _isActiveInventory;
     public bool CanMove;
+
+    // Animacje
+    private AnimationNodeStateMachinePlayback _playback;
 
     // Inne
     private float _currentFallVelocity;
-    private AnimationNodeStateMachinePlayback _playback;
-    private float _jumpDelayTimer = 0f;
     #endregion
 
     #region Lokalne Funkcje
@@ -122,6 +124,7 @@ public partial class PlayerMain : CharacterBody3D
 
     public override void _Ready()
     {
+        _animTree.Active = true;
         _playback = (AnimationNodeStateMachinePlayback)_animTree.Get(_locomotionStatePlaybackPath);
 
         // AutoLoad
@@ -149,30 +152,49 @@ public partial class PlayerMain : CharacterBody3D
     public override void _Process(double delta)
     {
         _animTree.Set(_locomotionBlendPath, Velocity.Length());
-        _animTree.Set(_crouchingBlendPath, Velocity.Length());
+        if (_isCrouching)
+            _animTree.Set(_crouchingBlendPath, Velocity.Length());
     }
 
     public override void _Input(InputEvent @event)
     {
-        if (!CanMove) return;
         if (@event is InputEventMouseMotion mouseMotion && Input.MouseMode == Input.MouseModeEnum.Captured)
         {
+            if (!CanMove) return;
             _cameraController.Look(this, -mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
         }
 
-        if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
+        // Kucanie
+        if (Input.IsActionJustPressed("Crouch") && IsOnFloor() && !_isSprinting)
         {
             _isCrouching = true;
             _speed = _crouchSpeed;
             _playback.Travel(_crouchingStateName);
             _cameraController.Crouch(_isCrouching);
         }
+
         if (Input.IsActionJustReleased("Crouch") && !_isSprinting)
         {
             _isCrouching = false;
             _speed = _standardSpeed;
             _playback.Travel(_walkingStateName);
             _cameraController.Crouch(_isCrouching);
+        }
+
+        // Ekwipunek
+        if (Input.IsActionJustPressed("Inventory") && IsOnFloor())
+        {
+            _isActiveInventory = _inventoryController.ToggleInventory(_isActiveInventory);
+            if (_isActiveInventory)
+            {
+                _playback.Travel(_inventoryStateName);
+                CanMove = false;
+            }
+            else
+            {
+                _playback.Travel(_walkingStateName);
+                CanMove = true;
+            }
         }
     }
 
@@ -185,7 +207,7 @@ public partial class PlayerMain : CharacterBody3D
         // Grawitacja
         if (!IsOnFloor())
         {
-            velocity += GetGravity() * d * 1f;
+            velocity += GetGravity() * d * 1.1f;
             if (!_isFalling)
             {
                 _isFalling = true;
@@ -210,10 +232,6 @@ public partial class PlayerMain : CharacterBody3D
         }
 
         // Sprint
-        if (Input.IsActionPressed("Shift") && IsOnFloor() && !_isCrouching && !_isExhausted)
-        {
-            _isSprinting = Stamina > 0.0f;
-        }
         bool wantsToSprint = Input.IsActionPressed("Shift") && IsOnFloor() && !_isCrouching && !_isExhausted;
 
         if (wantsToSprint && direction != Vector3.Zero)
@@ -226,6 +244,7 @@ public partial class PlayerMain : CharacterBody3D
             _speed = _isCrouching ? _crouchSpeed : _standardSpeed;
         }
 
+        // Poruszanie sie gracza
         if (IsOnFloor())
         {
             if (direction != Vector3.Zero)
@@ -256,7 +275,7 @@ public partial class PlayerMain : CharacterBody3D
         _cameraController.CalculateViewOffset(d, velocity, IsOnFloor(), _sprintSpeed);
         _cameraController.CheckLandingFall(IsOnFloor(), _currentFallVelocity);
         _currentFallVelocity = velocity.Y;
-        
+
         Velocity = velocity;
         MoveAndSlide();
     }

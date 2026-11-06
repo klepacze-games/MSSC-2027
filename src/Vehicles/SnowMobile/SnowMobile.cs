@@ -173,11 +173,23 @@ public partial class SnowMobile : RigidBody3D
 
         _isPlayerNearby = true;
         _nearbyPlayer = character;
+        RichTextLabel notification = character.GetNode<CanvasLayer>("Gui").GetNode<RichTextLabel>("Notification");
+        notification.Visible = true;
+        notification.Text = "[center]Wciśnij [b]E[/b], aby wsiąść na skuter śnieżny.[/center]";
     }
 
     private void OnInteractionAreaBodyExited(Node3D body)
     {
         if (body != _nearbyPlayer) return;
+
+        if (_nearbyPlayer != null)
+        {
+            RichTextLabel notification = _nearbyPlayer.GetNodeOrNull<CanvasLayer>("Gui")?.GetNodeOrNull<RichTextLabel>("Notification");
+            if (notification != null)
+            {
+                notification.Visible = false;
+            }
+        }
 
         _isPlayerNearby = false;
         _nearbyPlayer = null;

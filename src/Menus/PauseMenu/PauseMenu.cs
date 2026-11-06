@@ -18,7 +18,10 @@ public partial class PauseMenu : CanvasLayer
             TogglePause();
     }
 
-    private void OnResumeButtonPressed() => TogglePause();
+    private void OnResumeButtonPressed()
+    {
+        TogglePause();
+    }
 
     private void OnQuitButtonPressed()
     {
