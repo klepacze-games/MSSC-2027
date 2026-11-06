@@ -91,6 +91,13 @@ public partial class CameraController : Node3D
         _head.Rotation = rot;
     }
 
+    public void ResetCamera()
+    {
+        Vector3 rot = _head.Rotation;
+        rot.X = 0f;
+        _head.Rotation = rot;
+    }
+
     public void Crouch(bool isCrouching)
     {
         if (isCrouching)

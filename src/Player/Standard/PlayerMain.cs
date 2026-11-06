@@ -65,8 +65,17 @@ public partial class PlayerMain : CharacterBody3D
     private bool _isExhausted;
     private bool _isOnVehicle;
     private bool _isFalling;
-    private bool _isActiveInventory;
+    private bool _isOpenInventory;
     public bool CanMove;
+    public bool IsOpenInventory
+    {
+        get => _isOpenInventory;
+        set
+        {
+            _isOpenInventory = value;
+            ToggleInventory();
+        }
+    }
 
     // Animacje
     private AnimationNodeStateMachinePlayback _playback;
@@ -109,6 +118,7 @@ public partial class PlayerMain : CharacterBody3D
     private void OnPlayerEnteredVehicle()
     {
         if (_isSprinting) _isSprinting = false;
+        if (IsOpenInventory) IsOpenInventory = false;
         _isOnVehicle = true;
         _staminaBar.Visible = false;
     }
@@ -119,6 +129,22 @@ public partial class PlayerMain : CharacterBody3D
         float staminaGained = (float)timeSpentOnVehicle * _staminaRegeneration * 60f;
         Stamina = Mathf.Min(Stamina + staminaGained, _maxStamina);
         _staminaBar.Visible = true;
+    }
+
+    private void ToggleInventory()
+    {
+        _inventoryController.ToggleInventory(IsOpenInventory);
+        if (IsOpenInventory)
+        {
+            _playback.Travel(_inventoryStateName);
+            CanMove = false;
+            _cameraController.ResetCamera();
+        }
+        else
+        {
+            _playback.Travel(_walkingStateName);
+            CanMove = true;
+        }
     }
     #endregion
 
@@ -152,8 +178,7 @@ public partial class PlayerMain : CharacterBody3D
     public override void _Process(double delta)
     {
         _animTree.Set(_locomotionBlendPath, Velocity.Length());
-        if (_isCrouching)
-            _animTree.Set(_crouchingBlendPath, Velocity.Length());
+        _animTree.Set(_crouchingBlendPath, Velocity.Length());
     }
 
     public override void _Input(InputEvent @event)
@@ -164,43 +189,15 @@ public partial class PlayerMain : CharacterBody3D
             _cameraController.Look(this, -mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
         }
 
-        // Kucanie
-        if (Input.IsActionJustPressed("Crouch") && IsOnFloor() && !_isSprinting)
-        {
-            _isCrouching = true;
-            _speed = _crouchSpeed;
-            _playback.Travel(_crouchingStateName);
-            _cameraController.Crouch(_isCrouching);
-        }
-
-        if (Input.IsActionJustReleased("Crouch") && !_isSprinting)
-        {
-            _isCrouching = false;
-            _speed = _standardSpeed;
-            _playback.Travel(_walkingStateName);
-            _cameraController.Crouch(_isCrouching);
-        }
-
         // Ekwipunek
         if (Input.IsActionJustPressed("Inventory") && IsOnFloor())
         {
-            _isActiveInventory = _inventoryController.ToggleInventory(_isActiveInventory);
-            if (_isActiveInventory)
-            {
-                _playback.Travel(_inventoryStateName);
-                CanMove = false;
-            }
-            else
-            {
-                _playback.Travel(_walkingStateName);
-                CanMove = true;
-            }
+            IsOpenInventory = !IsOpenInventory;
         }
     }
 
     public override void _PhysicsProcess(double delta)
     {
-        if (!CanMove) return;
         Vector3 velocity = Velocity;
         float d = (float)delta;
 
@@ -219,6 +216,8 @@ public partial class PlayerMain : CharacterBody3D
             _isFalling = false;
             _playback.Travel(_walkingStateName);
         }
+
+        if (!CanMove) return;
 
         // Sterowanie
         Vector2 inputDir = Input.GetVector("MoveLeft", "MoveRight", "MoveForward", "MoveBackward");
@@ -242,6 +241,23 @@ public partial class PlayerMain : CharacterBody3D
         {
             _isSprinting = false;
             _speed = _isCrouching ? _crouchSpeed : _standardSpeed;
+        }
+
+        // Kucanie
+        if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
+        {
+            _isCrouching = true;
+            _speed = _crouchSpeed;
+            _playback.Travel(_crouchingStateName);
+            _cameraController.Crouch(_isCrouching);
+        }
+
+        if (Input.IsActionJustReleased("Crouch") && !_isSprinting)
+        {
+            _isCrouching = false;
+            _speed = _standardSpeed;
+            _playback.Travel(_walkingStateName);
+            _cameraController.Crouch(_isCrouching);
         }
 
         // Poruszanie sie gracza

@@ -26,7 +26,6 @@ public partial class InventoryController : MeshInstance3D
 
     // Zmienne logiczne
     private bool _equipped = false;
-
     #endregion
 
     #region Funkcje Lokalne
@@ -62,9 +61,8 @@ public partial class InventoryController : MeshInstance3D
         }
     }
 
-    public bool ToggleInventory(bool isActive)
+    public void ToggleInventory(bool isActive)
     {
-        isActive = !isActive;
         if (isActive)
         {
             Visible = true;
@@ -75,7 +73,6 @@ public partial class InventoryController : MeshInstance3D
             Visible = false;
             Input.MouseMode = Input.MouseModeEnum.Captured;
         }
-        return isActive;
     }
 
     public void EquipItem()
