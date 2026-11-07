@@ -17,12 +17,18 @@ public partial class PlayerMain : CharacterBody3D
 
     [ExportGroup("Animacje")]
     [Export] private string _locomotionStatePlaybackPath;
-    [Export] private string _locomotionBlendPath;
-    [Export] private string _crouchingBlendPath;
-    [Export] private string _inventoryStateName;
+    [Export] private string _upperBodyStatePlaybackPath;
+    [Export] private string _blend2BlendPath;
+    [ExportSubgroup("Animacje Locomotion State Machine")]
     [Export] private string _fallingStateName;
     [Export] private string _walkingStateName;
     [Export] private string _crouchingStateName;
+    [ExportSubgroup("Blend Pathy Locomotion State Machine")]
+    [Export] private string _locomotionBlendPath;
+    [Export] private string _crouchingBlendPath;
+    [ExportSubgroup("Animacje Upper Body State Machine")]
+    [Export] private string _inventoryStateName;
+    [Export] private string _holdingStateName;
 
     [ExportCategory("UStawienia prękdkości i Skoku")]
     [Export] private float _jumpVelocity = 4.5f;
@@ -78,7 +84,8 @@ public partial class PlayerMain : CharacterBody3D
     }
 
     // Animacje
-    private AnimationNodeStateMachinePlayback _playback;
+    private AnimationNodeStateMachinePlayback _locomotionPlayback;
+    private AnimationNodeStateMachinePlayback _upperBodyPlayback;
 
     // Inne
     private float _currentFallVelocity;
@@ -118,6 +125,7 @@ public partial class PlayerMain : CharacterBody3D
     private void OnPlayerEnteredVehicle()
     {
         if (_isSprinting) _isSprinting = false;
+        if (_isCrouching) _isCrouching = false;
         if (IsOpenInventory) IsOpenInventory = false;
         _isOnVehicle = true;
         _staminaBar.Visible = false;
@@ -133,16 +141,16 @@ public partial class PlayerMain : CharacterBody3D
 
     private void ToggleInventory()
     {
-        _inventoryController.ToggleInventory(IsOpenInventory);
+        _inventoryController.ToggleInventory(IsOpenInventory, _isCrouching);
         if (IsOpenInventory)
         {
-            _playback.Travel(_inventoryStateName);
+            _animTree.Set(_blend2BlendPath, 1f);
+            _upperBodyPlayback.Travel(_inventoryStateName);
             CanMove = false;
-            _cameraController.ResetCamera();
         }
         else
         {
-            _playback.Travel(_walkingStateName);
+            _animTree.Set(_blend2BlendPath, 0f);
             CanMove = true;
         }
     }
@@ -150,8 +158,10 @@ public partial class PlayerMain : CharacterBody3D
 
     public override void _Ready()
     {
+        // Przypisanie playback
         _animTree.Active = true;
-        _playback = (AnimationNodeStateMachinePlayback)_animTree.Get(_locomotionStatePlaybackPath);
+        _locomotionPlayback = (AnimationNodeStateMachinePlayback)_animTree.Get(_locomotionStatePlaybackPath);
+        _upperBodyPlayback = (AnimationNodeStateMachinePlayback)_animTree.Get(_upperBodyStatePlaybackPath);
 
         // AutoLoad
         _mouseSensitivity = GameManager.Instance.MouseSensitivity;
@@ -194,6 +204,14 @@ public partial class PlayerMain : CharacterBody3D
         {
             IsOpenInventory = !IsOpenInventory;
         }
+
+        if (IsOpenInventory && @event is InputEventMouseButton mouseButton)
+        {
+            if (mouseButton.ButtonIndex == MouseButton.Left && mouseButton.Pressed)
+            {
+                _inventoryController.TryInteractWithHoveredItem();
+            }
+        }
     }
 
     public override void _PhysicsProcess(double delta)
@@ -208,13 +226,13 @@ public partial class PlayerMain : CharacterBody3D
             if (!_isFalling)
             {
                 _isFalling = true;
-                _playback.Travel(_fallingStateName);
+                _locomotionPlayback.Travel(_fallingStateName);
             }
         }
         else if (_isFalling)
         {
             _isFalling = false;
-            _playback.Travel(_walkingStateName);
+            _locomotionPlayback.Travel(_walkingStateName);
         }
 
         if (!CanMove) return;
@@ -226,7 +244,7 @@ public partial class PlayerMain : CharacterBody3D
         // Skok
         if (Input.IsActionJustPressed("Jump") && IsOnFloor() && !_isCrouching)
         {
-            _playback.Travel(_fallingStateName);
+            _locomotionPlayback.Travel(_fallingStateName);
             velocity.Y = _jumpVelocity;
         }
 
@@ -248,15 +266,14 @@ public partial class PlayerMain : CharacterBody3D
         {
             _isCrouching = true;
             _speed = _crouchSpeed;
-            _playback.Travel(_crouchingStateName);
+            _locomotionPlayback.Travel(_crouchingStateName);
             _cameraController.Crouch(_isCrouching);
         }
-
-        if (Input.IsActionJustReleased("Crouch") && !_isSprinting)
+        else if (Input.IsActionJustReleased("Crouch") && _isCrouching)
         {
             _isCrouching = false;
             _speed = _standardSpeed;
-            _playback.Travel(_walkingStateName);
+            _locomotionPlayback.Travel(_walkingStateName);
             _cameraController.Crouch(_isCrouching);
         }
 
