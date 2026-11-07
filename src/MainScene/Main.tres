@@ -1,0 +1,24 @@
+[gd_resource type="VisualShader" format=3 uid="uid://dfwacoppmsodu"]
+
+[sub_resource type="VisualShaderNodeColorParameter" id="VisualShaderNodeColorParameter_0qcey"]
+parameter_name = "ColorParameter"
+
+[sub_resource type="VisualShaderNodeInput" id="VisualShaderNodeInput_1r582"]
+input_name = "normal"
+
+[sub_resource type="VisualShaderNodeInput" id="VisualShaderNodeInput_lpa41"]
+input_name = "inv_view_matrix"
+
+[sub_resource type="VisualShaderNodeTransformOp" id="VisualShaderNodeTransformOp_544cs"]
+
+[resource]
+nodes/fragment/0/position = Vector2(400, 160)
+nodes/fragment/4/node = SubResource("VisualShaderNodeColorParameter_0qcey")
+nodes/fragment/4/position = Vector2(-220, 40)
+nodes/fragment/5/node = SubResource("VisualShaderNodeInput_1r582")
+nodes/fragment/5/position = Vector2(-520, 340)
+nodes/fragment/6/node = SubResource("VisualShaderNodeInput_lpa41")
+nodes/fragment/6/position = Vector2(-480, 200)
+nodes/fragment/8/node = SubResource("VisualShaderNodeTransformOp_544cs")
+nodes/fragment/8/position = Vector2(-120, 200)
+nodes/fragment/connections = PackedInt32Array(4, 0, 0, 0, 6, 0, 8, 0)
