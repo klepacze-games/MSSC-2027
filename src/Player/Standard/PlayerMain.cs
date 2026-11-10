@@ -1,3 +1,4 @@
+#nullable enable
 using Godot;
 using MSSC2027.Vehicles.SnowMobile;
 using GameManager = MSSC2027.AutoLoad.GameManager;
@@ -6,343 +7,310 @@ namespace MSSC2027.Player.Standard;
 
 public partial class PlayerMain : CharacterBody3D
 {
-    #region Zmienne
-    // Eksporty
-    [ExportCategory("Referencje")]
-    [Export] private Node3D _head;
-    [Export] private Camera3D _camera;
-    [Export] private Panel _staminaBar;
-    [Export] private Node3D _cameraCrouchPosition;
-    [Export] private SnowMobile _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
+	#region Zmienne
+	// Eksporty
+	[ExportCategory("Referencje")]
+	[Export] private Node3D? _head;
+	[Export] private Camera3D? _camera;
+	[Export] private Panel? _staminaBar;
+	[Export] private Node3D? _cameraCrouchPosition;
+	[Export] private SnowMobile? _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
+	[Export] public PlayerStats? Stats;
 
-    [ExportCategory("UStawienia prękdkości i Skoku")]
-    [Export] private float _jumpVelocity = 4.5f;
-    [Export] private float _acceleration = 2.5f;
-    [Export] private float _deceleration = 2.2f;
 
-    [ExportGroup("Prędkości")]
-    [Export] private float _sprintSpeed = 10.0f;
-    [Export] private float _standardSpeed = 5.0f;
-    [Export] private float _crouchSpeed = 2.5f;
+	// AutoLoad
+	private float _mouseSensitivity;
+	private float _stickSensitivity;
+	private float _baseFov;
 
-    [ExportCategory("Ustawienia Staminy")]
-    [Export] private float _staminaRegeneration = 0.05f;
-    [Export] private float _staminaDrain = 0.1f;
-    [Export] private float _maxStamina = 100.0f;
-    [Export] private float _minStaminaToSprint = 5.0f;
+	// Stamina i speed
+	private float _speed;
+	private float _staminaBeforVehicle;
+	private float _stamina;
+	public float Stamina
+	{
+		get => _stamina;
+		set
+		{
+			_stamina = value;
+			UpdateStaminaBar();
+		}
+	}
 
-    [ExportCategory("Ustawienia Kamery")]
-    [Export] private float _fovChange = 1.5f;
-    [Export] private bool _enableTilt = true;
-    [Export] private bool _enableBob = true;
-    [Export] private bool _enableFallKick = true;
+	// Zmienne Logiczne
+	private bool _isSprinting;
+	private bool _isCrouching;
+	private bool _isExhausted;
 
-    [ExportGroup("Nachylenie")]
-    [Export] private float _cameraTiltSpeed = 10.0f;
-    [Export] private float _runPitch = 0.1f;
-    [Export] private float _runRoll = 0.25f;
-    [Export] private float _maxPitch = 1.0f;
-    [Export] private float _maxRoll = 2.5f;
+	// Ustawienia Głowy
+	private Vector3 _standardHeadPosition;
+	private Vector3 _targetHeadPosition;
 
-    [ExportGroup("Kiwanie")]
-    [Export] private float _bobFrequency = 2.0f;
-    [Export] private float _bobAmplitude = 0.08f;
+	// Upadek
+	private float _fallValue;
+	private float _fallTimer;
+	private float _currentFallVelocity;
 
-    [ExportGroup("Upadek")]
-    [Export] private float _fallTime = 0.3f;
-    [Export] private float _fallStrength = 3.0f;
-    [Export] private float _fallVelocityThreshold = -4f;
+	// Inne
+	private float _timeBob;
+	private bool _isOnVehicle;
+	#endregion
 
-    // AutoLoad
-    private float _mouseSensitivity;
-    private float _stickSensitivity;
-    private float _baseFov;
+	public override void _Ready()
+	{
+		// AutoLoad
+		if (GameManager.Instance != null)
+		{
+			_mouseSensitivity = GameManager.Instance.MouseSensitivity;
+			_stickSensitivity = GameManager.Instance.StickSensitivity;
+			_baseFov = GameManager.Instance.BaseFov;
+		}
 
-    // Stamina i speed
-    private float _speed;
-    private float _staminaBeforVehicle;
-    private float _stamina;
-    public float Stamina
-    {
-        get => _stamina;
-        set
-        {
-            _stamina = value;
-            UpdateStaminaBar();
-        }
-    }
+		// Podpinanie sygnałów od skutera
+		if (_snowMobile != null)
+		{
+			_snowMobile.PlayerEntered += OnPlayerEnteredVehicle;
+			_snowMobile.PlayerExited += OnPlayerExitedVehicle;
+		}
 
-    // Zmienne Logiczne
-    private bool _isSprinting;
-    private bool _isCrouching;
-    private bool _isExhausted;
+		// Ustawianie domyślnych wartości
+		_camera.Fov = _baseFov;
+		_speed = Stats.StandardSpeed;
+		Stamina = Stats.MaxStamina;
+		Input.MouseMode = Input.MouseModeEnum.Captured;
+		_standardHeadPosition = _head.Position;
+	}
 
-    // Ustawienia Głowy
-    private Vector3 _standardHeadPosition;
-    private Vector3 _targetHeadPosition;
+	private void Look(float yaw, float pitch)
+	{
+		RotateY(yaw);
+		_head.RotateX(pitch);
+		Vector3 rot = _head.Rotation;
+		rot.X = Mathf.Clamp(rot.X, Mathf.DegToRad(-89f), Mathf.DegToRad(89f));
+		_head.Rotation = rot;
+	}
 
-    // Upadek
-    private float _fallValue = 0f;
-    private float _fallTimer = 0f;
-    private float _currentFallVelocity;
+	private void Crouch()
+	{
+		if (_isCrouching)
+		{
+			_targetHeadPosition = _cameraCrouchPosition.Position;
+			_speed = Stats.CrouchSpeed;
+		}
+		else
+		{
+			_targetHeadPosition = _standardHeadPosition;
+			_speed = Stats.StandardSpeed;
+		}
+	}
 
-    // Inne
-    private float _timeBob;
-    private bool _isOnVehicle;
-    #endregion
+	private void Sprint(Vector3 direction)
+	{
+		if (_isSprinting && direction != Vector3.Zero)
+		{
+			_speed = Stats.SprintSpeed;
+			Stamina = Mathf.Max(0.0f, Stamina - Stats.StaminaDrain);
 
-    public override void _Ready()
-    {
-        // AutoLoad
-        _mouseSensitivity = GameManager.Instance.MouseSensitivity;
-        _stickSensitivity = GameManager.Instance.StickSensitivity;
-        _baseFov = GameManager.Instance.BaseFov;
+			if (!(Stamina <= 0.0f)) return;
+			_isSprinting = false;
+			_isExhausted = true;
+		}
+		else
+		{
+			if (!_isOnVehicle)
+			{
+				if (Stamina < Stats.MaxStamina)
+					Stamina = Mathf.Min(Stats.MaxStamina, Stamina + Stats.StaminaRegeneration);
 
-        // Podpinanie sygnałów od skutera
-        if (_snowMobile != null)
-        {
-            _snowMobile.PlayerEntered += OnPlayerEnteredVehicle;
-            _snowMobile.PlayerExited += OnPlayerExitedVehicle;
-        }
+				if (_isExhausted && Stamina >= Stats.MinStaminaToSprint)
+					_isExhausted = false;
+			}
+		}
+	}
 
-        // Ustawianie domyślnych wartości
-        _camera.Fov = _baseFov;
-        _speed = _standardSpeed;
-        Stamina = _maxStamina;
-        Input.MouseMode = Input.MouseModeEnum.Captured;
-        _standardHeadPosition = _head.Position;
-    }
+	private void UpdateStaminaBar()
+	{
+		_staminaBar.SetDeferred(Control.PropertyName.Size, new Vector2(1920 * Stamina / Stats.MaxStamina, _staminaBar.Size.Y));
+	}
 
-    private void Look(float yaw, float pitch)
-    {
-        RotateY(yaw);
-        _head.RotateX(pitch);
-        Vector3 rot = _head.Rotation;
-        rot.X = Mathf.Clamp(rot.X, Mathf.DegToRad(-89f), Mathf.DegToRad(89f));
-        _head.Rotation = rot;
-    }
+	public override void _Input(InputEvent @event)
+	{
+		if (@event is InputEventMouseMotion mouseMotion && Input.MouseMode == Input.MouseModeEnum.Captured)
+		{
+			Look(-mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
+		}
+	}
 
-    private void Crouch()
-    {
-        if (_isCrouching)
-        {
-            _targetHeadPosition = _cameraCrouchPosition.Position;
-            _speed = _crouchSpeed;
-        }
-        else
-        {
-            _targetHeadPosition = _standardHeadPosition;
-            _speed = _standardSpeed;
-        }
-    }
+	private void OnPlayerEnteredVehicle()
+	{
+		if (_isSprinting) _isSprinting = false;
+		_isOnVehicle = true;
+		_staminaBar.Visible = false;
+	}
 
-    private void Sprint(Vector3 direction)
-    {
-        if (_isSprinting && direction != Vector3.Zero)
-        {
-            _speed = _sprintSpeed;
-            Stamina = Mathf.Max(0.0f, Stamina - _staminaDrain);
+	private void OnPlayerExitedVehicle(double timeSpentOnVehicle)
+	{
+		_isOnVehicle = false;
+		float staminaGained = (float)timeSpentOnVehicle * Stats.StaminaRegeneration * 60f;
+		Stamina = Mathf.Min(Stamina + staminaGained, Stats.MaxStamina);
+		_staminaBar.Visible = true;
 
-            if (!(Stamina <= 0.0f)) return;
-            _isSprinting = false;
-            _isExhausted = true;
-        }
-        else
-        {
-            if (!_isOnVehicle)
-            {
-                if (Stamina < _maxStamina)
-                    Stamina = Mathf.Min(_maxStamina, Stamina + _staminaRegeneration);
+	}
 
-                if (_isExhausted && Stamina >= _minStaminaToSprint)
-                    _isExhausted = false;
-            }
-        }
-    }
+	private Vector3 HeadBob(float time)
+	{
+		Vector3 pos = Vector3.Zero;
+		pos.Y = Mathf.Sin(time * Stats.BobFrequency) * Stats.BobAmplitude;
+		pos.X = Mathf.Cos(time * Stats.BobFrequency / 2) * Stats.BobAmplitude;
+		return pos;
+	}
 
-    private void UpdateStaminaBar()
-    {
-        _staminaBar.SetDeferred(Control.PropertyName.Size, new Vector2(1920 * Stamina / _maxStamina, _staminaBar.Size.Y));
-    }
+	private void CalculateViewOffset(float delta, Vector3 velocity)
+	{
+		Vector3 angles = Vector3.Zero;
+		Vector3 offset = Vector3.Zero;
 
-    public override void _Input(InputEvent @event)
-    {
-        if (@event is InputEventMouseMotion mouseMotion && Input.MouseMode == Input.MouseModeEnum.Captured)
-        {
-            Look(-mouseMotion.Relative.X * _mouseSensitivity, -mouseMotion.Relative.Y * _mouseSensitivity);
-        }
-    }
+		_fallTimer -= delta;
 
-    private void OnPlayerEnteredVehicle()
-    {
-        if (_isSprinting) _isSprinting = false;
-        _isOnVehicle = true;
-        _staminaBar.Visible = false;
-    }
+		// Nachylenie
+		if (Stats.EnableTilt)
+		{
+			Vector3 forward = GlobalTransform.Basis.Z;
+			Vector3 right = GlobalTransform.Basis.X;
 
-    private void OnPlayerExitedVehicle(double timeSpentOnVehicle)
-    {
-        _isOnVehicle = false;
-        float staminaGained = (float)timeSpentOnVehicle * _staminaRegeneration * 60f;
-        Stamina = Mathf.Min(Stamina + staminaGained, _maxStamina);
-        _staminaBar.Visible = true;
+			float forwardDot = velocity.Dot(forward);
+			float forwardTilt = Mathf.Clamp(forwardDot * Mathf.DegToRad(Stats.RunPitch), Mathf.DegToRad(-Stats.MaxPitch), Mathf.DegToRad(Stats.MaxPitch));
+			angles.X += forwardTilt;
 
-    }
+			float rightDot = velocity.Dot(right);
+			float sideTilt = Mathf.Clamp(rightDot * Mathf.DegToRad(Stats.RunRoll), Mathf.DegToRad(-Stats.MaxRoll), Mathf.DegToRad(Stats.MaxRoll));
+			angles.Z -= sideTilt;
+		}
 
-    private Vector3 HeadBob(float time)
-    {
-        Vector3 pos = Vector3.Zero;
-        pos.Y = Mathf.Sin(time * _bobFrequency) * _bobAmplitude;
-        pos.X = Mathf.Cos(time * _bobFrequency / 2) * _bobAmplitude;
-        return pos;
-    }
+		// Upadek
+		if (Stats.EnableFallKick)
+		{
+			float fallRatio = Mathf.Max(0f, _fallTimer / Stats.FallTime);
+			float fallKickAmount = fallRatio * _fallValue;
+			angles.X -= fallKickAmount;
+			offset.Y -= fallKickAmount;
+		}
 
-    private void CalculateViewOffset(float delta, Vector3 velocity)
-    {
-        Vector3 angles = Vector3.Zero;
-        Vector3 offset = Vector3.Zero;
+		// Kiwanie Głową
+		if (Stats.EnableBob)
+		{
+			if (IsOnFloor() && velocity.Length() > 0.1f)
+			{
+				_timeBob += delta * velocity.Length();
+			}
+			offset += HeadBob(_timeBob);
+		}
 
-        _fallTimer -= delta;
+		_camera.Position = offset;
+		_camera.Rotation = _camera.Rotation.Lerp(angles, Stats.CameraTiltSpeed * delta);
+	}
 
-        // Nachylenie
-        if (_enableTilt)
-        {
-            Vector3 forward = GlobalTransform.Basis.Z;
-            Vector3 right = GlobalTransform.Basis.X;
+	private void AddFallKick(float fallStrength)
+	{
+		_fallValue = Mathf.DegToRad(fallStrength);
+		_fallTimer = Stats.FallTime;
+	}
 
-            float forwardDot = velocity.Dot(forward);
-            float forwardTilt = Mathf.Clamp(forwardDot * Mathf.DegToRad(_runPitch), Mathf.DegToRad(-_maxPitch), Mathf.DegToRad(_maxPitch));
-            angles.X += forwardTilt;
+	private void OnAirborneStatePhysicsProcessing()
+	{
+		if (IsOnFloor())
+		{
+			if (_currentFallVelocity < Stats.FallVelocityThreshold)
+				AddFallKick(Stats.FallStrength);
+		}
+		_currentFallVelocity = Velocity.Y;
+	}
 
-            float rightDot = velocity.Dot(right);
-            float sideTilt = Mathf.Clamp(rightDot * Mathf.DegToRad(_runRoll), Mathf.DegToRad(-_maxRoll), Mathf.DegToRad(_maxRoll));
-            angles.Z -= sideTilt;
-        }
+	public override void _PhysicsProcess(double delta)
+	{
+		Vector3 velocity = Velocity;
+		float d = (float)delta;
 
-        // Upadek
-        if (_enableFallKick)
-        {
-            float fallRatio = Mathf.Max(0f, _fallTimer / _fallTime);
-            float fallKickAmount = fallRatio * _fallValue;
-            angles.X -= fallKickAmount;
-            offset.Y -= fallKickAmount;
-        }
+		// Dodana grawitacja
+		if (!IsOnFloor())
+		{
+			velocity += GetGravity() * d * 1.5f;
+		}
 
-        // Kiwanie Głową
-        if (_enableBob)
-        {
-            if (IsOnFloor() && velocity.Length() > 0.1f)
-            {
-                _timeBob += delta * velocity.Length();
-            }
-            offset += HeadBob(_timeBob);
-        }
+		// Zarządzanie jumpem
+		if (Input.IsActionJustPressed("Jump") && IsOnFloor() && !_isCrouching)
+		{
+			velocity.Y = Stats.JumpVelocity;
+		}
 
-        _camera.Position = offset;
-        _camera.Rotation = _camera.Rotation.Lerp(angles, _cameraTiltSpeed * delta);
-    }
+		// Zarządzanie sprintem
+		if (Input.IsActionPressed("Shift") && IsOnFloor() && !_isCrouching && !_isExhausted)
+		{
+			_isSprinting = Stamina > 0.0f;
+		}
+		if (Input.IsActionJustReleased("Shift") && !_isCrouching)
+		{
+			_isSprinting = false;
+		}
 
-    private void AddFallKick(float fallStrength)
-    {
-        _fallValue = Mathf.DegToRad(fallStrength);
-        _fallTimer = _fallTime;
-    }
+		// Zarządzanie crouchem
+		if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
+		{
+			_isCrouching = true;
+		}
+		if (Input.IsActionJustReleased("Crouch") && !_isSprinting)
+		{
+			_isCrouching = false;
+		}
 
-    private void OnAirborneStatePhysicsProcessing()
-    {
-        if (IsOnFloor())
-        {
-            if (_currentFallVelocity < _fallVelocityThreshold)
-                AddFallKick(_fallStrength);
-        }
-        _currentFallVelocity = Velocity.Y;
-    }
+		// Sterowanie
+		Vector2 inputDir = Input.GetVector("MoveLeft", "MoveRight", "MoveForward", "MoveBackward");
+		Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
+		if (IsOnFloor())
+		{
+			if (direction != Vector3.Zero)
+			{
+				velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * Stats.Acceleration);
+				velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * Stats.Acceleration);
+			}
+			else
+			{
+				velocity.X = Mathf.Lerp(velocity.X, 0.0f, d * Stats.Deceleration);
+				velocity.Z = Mathf.Lerp(velocity.Z, 0.0f, d * Stats.Deceleration);
+			}
+		}
+		else
+		{
+			velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * 3.0f);
+			velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * 3.0f);
+		}
 
-    public override void _PhysicsProcess(double delta)
-    {
-        Vector3 velocity = Velocity;
-        float d = (float)delta;
+		// Funkcje do działania crouchu i sprintu
+		Crouch();
+		Sprint(direction);
 
-        // Dodana grawitacja
-        if (!IsOnFloor())
-        {
-            velocity += GetGravity() * d * 1.5f;
-        }
+		// Obracanie kamerą na gamepadzie
+		Vector2 look = Input.GetVector("LookLeft", "LookRight", "LookUp", "LookDown");
+		if (look != Vector2.Zero)
+		{
+			Look(-look.X * _stickSensitivity * d, -look.Y * _stickSensitivity * d);
+		}
 
-        // Zarządzanie jumpem
-        if (Input.IsActionJustPressed("Jump") && IsOnFloor() && !_isCrouching)
-        {
-            velocity.Y = _jumpVelocity;
-        }
+		// Płynne przejście między crouchem i standard position
+		Vector3 currentPosition = _head.Position;
+		currentPosition.Y = Mathf.Lerp(currentPosition.Y, _targetHeadPosition.Y, 7.0f * d);
+		_head.Position = currentPosition;
 
-        // Zarządzanie sprintem
-        if (Input.IsActionPressed("Shift") && IsOnFloor() && !_isCrouching && !_isExhausted)
-        {
-            _isSprinting = Stamina > 0.0f;
-        }
-        if (Input.IsActionJustReleased("Shift") && !_isCrouching)
-        {
-            _isSprinting = false;
-        }
+		// Nachylenie Kamery i Upadek
+		CalculateViewOffset(d, velocity);
+		OnAirborneStatePhysicsProcessing();
 
-        // Zarządzanie crouchem
-        if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
-        {
-            _isCrouching = true;
-        }
-        if (Input.IsActionJustReleased("Crouch") && !_isSprinting)
-        {
-            _isCrouching = false;
-        }
+		// FOV
+		float velocityClamped = Mathf.Clamp(velocity.Length(), 0.5f, Stats.SprintSpeed * 2.0f);
+		float targetFov = _baseFov + Stats.FovChange + velocityClamped;
+		_camera.Fov = Mathf.Lerp(_camera.Fov, targetFov, d * 8.0f);
 
-        // Sterowanie
-        Vector2 inputDir = Input.GetVector("MoveLeft", "MoveRight", "MoveForward", "MoveBackward");
-        Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
-        if (IsOnFloor())
-        {
-            if (direction != Vector3.Zero)
-            {
-                velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * _acceleration);
-                velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * _acceleration);
-            }
-            else
-            {
-                velocity.X = Mathf.Lerp(velocity.X, 0.0f, d * _deceleration);
-                velocity.Z = Mathf.Lerp(velocity.Z, 0.0f, d * _deceleration);
-            }
-        }
-        else
-        {
-            velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * 3.0f);
-            velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * 3.0f);
-        }
-
-        // Funkcje do działania crouchu i sprintu
-        Crouch();
-        Sprint(direction);
-
-        // Obracanie kamerą na gamepadzie
-        Vector2 look = Input.GetVector("LookLeft", "LookRight", "LookUp", "LookDown");
-        if (look != Vector2.Zero)
-        {
-            Look(-look.X * _stickSensitivity * d, -look.Y * _stickSensitivity * d);
-        }
-
-        // Płynne przejście między crouchem i standard position
-        Vector3 currentPosition = _head.Position;
-        currentPosition.Y = Mathf.Lerp(currentPosition.Y, _targetHeadPosition.Y, 7.0f * d);
-        _head.Position = currentPosition;
-
-        // Nachylenie Kamery i Upadek
-        CalculateViewOffset(d, velocity);
-        OnAirborneStatePhysicsProcessing();
-
-        // FOV
-        float velocityClamped = Mathf.Clamp(velocity.Length(), 0.5f, _sprintSpeed * 2.0f);
-        float targetFov = _baseFov + _fovChange + velocityClamped;
-        _camera.Fov = Mathf.Lerp(_camera.Fov, targetFov, d * 8.0f);
-
-        Velocity = velocity;
-        MoveAndSlide();
-    }
+		Velocity = velocity;
+		MoveAndSlide();
+	}
 }

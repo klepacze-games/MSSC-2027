@@ -1,44 +1,57 @@
 using Godot;
+using MSSC2027.AutoLoad;
 
 namespace MSSC2027.Menus.PauseMenu;
 
 public partial class PauseMenu : CanvasLayer
 {
-    private Button _resumeButton;
+	[Export] private GameManager  _gameManager;
+	private Button _resumeButton;
 
-    public override void _Ready()
-    {
-        Visible = false;
-        _resumeButton = GetNode<VBoxContainer>("ButtonContainer").GetNode<Button>("ResumeButton");
-    }
+	public override void _Ready()
+	{
+		Visible = false;
+		_resumeButton = GetNode<VBoxContainer>("ButtonContainer").GetNode<Button>("ResumeButton");
+	}
 
-    public override void _UnhandledInput(InputEvent @event)
-    {
-        if (@event.IsActionPressed("Escape"))
-            TogglePause();
-    }
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		if (@event.IsActionPressed("Escape"))
+			TogglePause();
+	}
 
-    private void OnResumeButtonPressed() => TogglePause();
+	private void OnResumeButtonPressed() => TogglePause();
 
-    private void OnQuitButtonPressed()
-    {
-        GetTree().Paused = false;
-        GetTree().Quit();
-    }
+	private void OnQuitButtonPressed()
+	{
+		GetTree().Paused = false;
+		GetTree().Quit();
+	}
 
-    private void TogglePause()
-    {
-        bool newPausedState = !GetTree().Paused;
-        GetTree().Paused = newPausedState;
-        Visible = newPausedState;
-        if (newPausedState)
-        {
-            Input.MouseMode = Input.MouseModeEnum.Visible;
-            _resumeButton.GrabFocus();
-        }
-        else
-        {
-            Input.MouseMode = Input.MouseModeEnum.Captured;
-        }
-    }
+	private void TogglePause()
+	{
+		bool newPausedState = !GetTree().Paused;
+		GetTree().Paused = newPausedState;
+		Visible = newPausedState;
+		if (newPausedState)
+		{
+			Input.MouseMode = Input.MouseModeEnum.Visible;
+			_resumeButton.GrabFocus();
+		}
+		else
+		{
+			Input.MouseMode = Input.MouseModeEnum.Captured;
+		}
+	}
+
+	private void on_save_button_pressed()
+	{
+		_gameManager.save_game();
+	}
+
+	private void _on_load_button_pressed()
+	{
+		_gameManager.CreateOrLodeSave();
+	}
+
 }

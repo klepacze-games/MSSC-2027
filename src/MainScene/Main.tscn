@@ -2,10 +2,16 @@
 
 [ext_resource type="Script" uid="uid://cn3ga3rf6gb5i" path="res://src/MainScene/Main.cs" id="1_0lxnl"]
 [ext_resource type="PackedScene" uid="uid://bg2xiknhhsldh" path="res://src/Player/Standard/Player.tscn" id="2_0lxnl"]
+[ext_resource type="Script" uid="uid://djecgfrkrgit6" path="res://src/AutoLoad/GameManager.cs" id="2_grq43"]
 [ext_resource type="Script" uid="uid://dxq4p56omxx80" path="res://addons/lowpolyterrain/LowPolyTerrainManager.gd" id="4_0lxnl"]
+[ext_resource type="Script" uid="uid://dpwh7qw0j34wy" path="res://recources/items/PlayerStats.cs" id="4_grq43"]
 [ext_resource type="PackedScene" uid="uid://b4t1yinuegh73" path="res://src/Vehicles/SnowMobile/SnowMobile.tscn" id="5_a1iml"]
 [ext_resource type="Shader" uid="uid://dq4udl5a5fk1e" path="res://addons/lowpolyterrain/shader/terrain_paint_overlay.gdshader" id="5_tba7s"]
 [ext_resource type="PackedScene" uid="uid://bdhjwf33mjp7w" path="res://src/Menus/PauseMenu/PauseMenu.tscn" id="5_vxoli"]
+
+[sub_resource type="Resource" id="Resource_tba7s"]
+script = ExtResource("4_grq43")
+metadata/_custom_type_script = "uid://dpwh7qw0j34wy"
 
 [sub_resource type="PhysicalSkyMaterial" id="PhysicalSkyMaterial_t0qip"]
 
@@ -53,14 +59,20 @@ shader_parameter/paint_layer_4_detail_size = 2.0
 [node name="Main" type="Node3D" unique_id=1456064230]
 script = ExtResource("1_0lxnl")
 
+[node name="GameManager" type="Node" parent="." unique_id=160187768 node_paths=PackedStringArray("_playerMain")]
+script = ExtResource("2_grq43")
+_playerMain = NodePath("../Player")
+
 [node name="Player" parent="." unique_id=1751409063 node_paths=PackedStringArray("_snowMobile") instance=ExtResource("2_0lxnl")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.4142118, -21.930576, 0)
 _snowMobile = NodePath("../SnowMobile")
+Stats = SubResource("Resource_tba7s")
 
 [node name="SunLight" type="DirectionalLight3D" parent="." unique_id=1453893211]
 transform = Transform3D(1, 0, 0, 0, 0.5034529, 0.8640227, 0, -0.8640227, 0.5034529, 0, 0, 22)
 
-[node name="PauseMenu" parent="." unique_id=1917265013 instance=ExtResource("5_vxoli")]
+[node name="PauseMenu" parent="." unique_id=1917265013 node_paths=PackedStringArray("_gameManager") instance=ExtResource("5_vxoli")]
+_gameManager = NodePath("../GameManager")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1917290296]
 environment = SubResource("Environment_nxl24")
