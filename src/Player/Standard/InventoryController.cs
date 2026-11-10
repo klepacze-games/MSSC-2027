@@ -9,6 +9,14 @@ public partial class InventoryController : MeshInstance3D
     // Eksporty
     [ExportCategory("Referencje")]
     [Export] private Node3D _handNode;
+    [Export] private AnimationTree _animTree;
+
+    [ExportCategory("Animacje")]
+    [Export] private string _upperBodyStatePlaybackPath;
+    [Export] private string _blend2BlendPath;
+    [ExportSubgroup("Animacje Upper Body State Machine")]
+    [Export] private string _inventoryStateName;
+    [Export] private string _holdingStateName;
 
     // Ekwipunek
     public class ItemData
@@ -20,9 +28,13 @@ public partial class InventoryController : MeshInstance3D
     }
     private List<ItemData> _inventoryItems = new();
     private ItemData _currentlyHoveredItem = null;
+    private ItemData _currentlyEquippedItem = null;
 
     // Zmienne logiczne
     private bool _equipped = false;
+
+    // Animacje
+    private AnimationNodeStateMachinePlayback _upperBodyPlayback;
 
     // Bazowe wratości
     private const float _heightDifference = 0.44f;
@@ -63,7 +75,9 @@ public partial class InventoryController : MeshInstance3D
     public override void _Ready()
     {
         // Ustawianie bazowych wartości
+        _animTree.Set(_blend2BlendPath, 0f);
         _baseInventoryPosition = Position;
+        _upperBodyPlayback = (AnimationNodeStateMachinePlayback)_animTree.Get(_upperBodyStatePlaybackPath);
 
         // Ekwipunek
         foreach (Node child in GetChildren())
@@ -102,12 +116,10 @@ public partial class InventoryController : MeshInstance3D
         }
     }
 
-    public void ToggleInventory(bool isOpen, bool isCrouching)
+    public void CheckInventory(bool isOpen, bool isCrouching)
     {
         if (isOpen)
         {
-            Visible = true;
-            Input.MouseMode = Input.MouseModeEnum.Visible;
             if (isCrouching)
             {
                 Vector3 currentPos = Position;
@@ -118,31 +130,68 @@ public partial class InventoryController : MeshInstance3D
             {
                 Position = _baseInventoryPosition;
             }
+
+            Visible = true;
+            Input.MouseMode = Input.MouseModeEnum.Visible;
+            _animTree.Set(_blend2BlendPath, 1f);
+            _upperBodyPlayback.Travel(_inventoryStateName);
+
         }
         else
         {
             Visible = false;
             Input.MouseMode = Input.MouseModeEnum.Captured;
+            _animTree.Set(_blend2BlendPath, 0f);
         }
     }
 
-    public void TryInteractWithHoveredItem()
+    public bool TryInteractWithHoveredItem(bool isCrouching)
     {
-        if (_currentlyHoveredItem == null || !Visible) return;
+        if (_currentlyHoveredItem == null || !Visible) return false;
 
         _currentlyHoveredItem.IsEquipped = !_currentlyHoveredItem.IsEquipped;
-
+        if (_currentlyEquippedItem != null) GD.Print(_currentlyEquippedItem.InventoryMesh.Name, " ", _currentlyHoveredItem.InventoryMesh.Name);
         if (_currentlyHoveredItem.IsEquipped)
         {
+            if (_currentlyEquippedItem != null)
+            {
+                _currentlyEquippedItem.InventoryMesh.Visible = true;
+                _currentlyEquippedItem.HandMesh.Visible = false;
+            }
+
             _currentlyHoveredItem.InventoryMesh.Visible = false;
             _currentlyHoveredItem.HandMesh.Visible = true;
+            _currentlyEquippedItem = _currentlyHoveredItem;
             _equipped = true;
+
+            GD.Print(_currentlyEquippedItem.InventoryMesh.Name, " ", _currentlyHoveredItem.InventoryMesh.Name);
+            CheckInventory(false, isCrouching);
+            return false;
         }
         else
         {
+            _currentlyEquippedItem.InventoryMesh.Visible = true;
+            _currentlyEquippedItem.HandMesh.Visible = false;
             _currentlyHoveredItem.InventoryMesh.Visible = true;
             _currentlyHoveredItem.HandMesh.Visible = false;
+
+            _currentlyEquippedItem = null;
             _equipped = false;
+
+            return true;
+        }
+    }
+
+    public void ProcessHoldingAnim()
+    {
+        if (_equipped)
+        {
+            _animTree.Set(_blend2BlendPath, 1f);
+            _upperBodyPlayback.Travel(_holdingStateName);
+        }
+        else if (!_equipped)
+        {
+            _animTree.Set(_blend2BlendPath, 0f);
         }
     }
 }

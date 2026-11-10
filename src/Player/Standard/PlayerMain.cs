@@ -15,10 +15,9 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private AnimationTree _animTree;
     [Export] private SnowMobile _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
 
-    [ExportGroup("Animacje")]
+    [ExportGroup("Animacje")] // Reszta animacji jest w inventory controller
     [Export] private string _locomotionStatePlaybackPath;
     [Export] private string _upperBodyStatePlaybackPath;
-    [Export] private string _blend2BlendPath;
     [ExportSubgroup("Animacje Locomotion State Machine")]
     [Export] private string _fallingStateName;
     [Export] private string _walkingStateName;
@@ -26,9 +25,6 @@ public partial class PlayerMain : CharacterBody3D
     [ExportSubgroup("Blend Pathy Locomotion State Machine")]
     [Export] private string _locomotionBlendPath;
     [Export] private string _crouchingBlendPath;
-    [ExportSubgroup("Animacje Upper Body State Machine")]
-    [Export] private string _inventoryStateName;
-    [Export] private string _holdingStateName;
 
     [ExportCategory("UStawienia prękdkości i Skoku")]
     [Export] private float _jumpVelocity = 4.5f;
@@ -79,7 +75,7 @@ public partial class PlayerMain : CharacterBody3D
         set
         {
             _isOpenInventory = value;
-            ToggleInventory();
+            _inventoryController.CheckInventory(IsOpenInventory, _isCrouching);
         }
     }
 
@@ -138,22 +134,6 @@ public partial class PlayerMain : CharacterBody3D
         Stamina = Mathf.Min(Stamina + staminaGained, _maxStamina);
         _staminaBar.Visible = true;
     }
-
-    private void ToggleInventory()
-    {
-        _inventoryController.ToggleInventory(IsOpenInventory, _isCrouching);
-        if (IsOpenInventory)
-        {
-            _animTree.Set(_blend2BlendPath, 1f);
-            _upperBodyPlayback.Travel(_inventoryStateName);
-            CanMove = false;
-        }
-        else
-        {
-            _animTree.Set(_blend2BlendPath, 0f);
-            CanMove = true;
-        }
-    }
     #endregion
 
     public override void _Ready()
@@ -187,8 +167,20 @@ public partial class PlayerMain : CharacterBody3D
 
     public override void _Process(double delta)
     {
-        _animTree.Set(_locomotionBlendPath, Velocity.Length());
-        _animTree.Set(_crouchingBlendPath, Velocity.Length());
+        if (IsOpenInventory)
+        {
+            _animTree.Set(_locomotionBlendPath, 0f);
+            _animTree.Set(_crouchingBlendPath, 0f);
+
+            CanMove = false;
+        }
+        else
+        {
+            _animTree.Set(_locomotionBlendPath, Velocity.Length());
+            _animTree.Set(_crouchingBlendPath, Velocity.Length());
+
+            CanMove = true;
+        }
     }
 
     public override void _Input(InputEvent @event)
@@ -209,7 +201,7 @@ public partial class PlayerMain : CharacterBody3D
         {
             if (mouseButton.ButtonIndex == MouseButton.Left && mouseButton.Pressed)
             {
-                _inventoryController.TryInteractWithHoveredItem();
+                IsOpenInventory = _inventoryController.TryInteractWithHoveredItem(_isCrouching);
             }
         }
     }
