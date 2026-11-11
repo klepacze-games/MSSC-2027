@@ -96,7 +96,6 @@ public partial class InventoryController : MeshInstance3D
                         ItemArea = itemArea,
                         InventoryMesh = invMesh,
                         HandMesh = handMesh,
-                        IsEquipped = false
                     };
 
                     _inventoryItems.Add(newItem);
@@ -118,6 +117,7 @@ public partial class InventoryController : MeshInstance3D
 
     public void CheckInventory(bool isOpen, bool isCrouching)
     {
+        Visible = isOpen;
         if (isOpen)
         {
             if (isCrouching)
@@ -131,15 +131,20 @@ public partial class InventoryController : MeshInstance3D
                 Position = _baseInventoryPosition;
             }
 
-            Visible = true;
             Input.MouseMode = Input.MouseModeEnum.Visible;
             _animTree.Set(_blend2BlendPath, 1f);
             _upperBodyPlayback.Travel(_inventoryStateName);
 
+            if (_currentlyEquippedItem != null)
+            {
+                _currentlyEquippedItem.HandMesh.Visible = false;
+                _currentlyEquippedItem.InventoryMesh.Visible = true;
+                _currentlyEquippedItem = null;
+                _equipped = false;
+            }
         }
         else
         {
-            Visible = false;
             Input.MouseMode = Input.MouseModeEnum.Captured;
             _animTree.Set(_blend2BlendPath, 0f);
         }
@@ -147,39 +152,31 @@ public partial class InventoryController : MeshInstance3D
 
     public bool TryInteractWithHoveredItem(bool isCrouching)
     {
-        if (_currentlyHoveredItem == null || !Visible) return false;
+        if (_currentlyHoveredItem == null || !Visible) return true;
 
-        _currentlyHoveredItem.IsEquipped = !_currentlyHoveredItem.IsEquipped;
-        if (_currentlyEquippedItem != null) GD.Print(_currentlyEquippedItem.InventoryMesh.Name, " ", _currentlyHoveredItem.InventoryMesh.Name);
-        if (_currentlyHoveredItem.IsEquipped)
+        if (_currentlyEquippedItem == _currentlyHoveredItem)
         {
-            if (_currentlyEquippedItem != null)
-            {
-                _currentlyEquippedItem.InventoryMesh.Visible = true;
-                _currentlyEquippedItem.HandMesh.Visible = false;
-            }
-
-            _currentlyHoveredItem.InventoryMesh.Visible = false;
-            _currentlyHoveredItem.HandMesh.Visible = true;
-            _currentlyEquippedItem = _currentlyHoveredItem;
-            _equipped = true;
-
-            GD.Print(_currentlyEquippedItem.InventoryMesh.Name, " ", _currentlyHoveredItem.InventoryMesh.Name);
-            CheckInventory(false, isCrouching);
-            return false;
+            _currentlyEquippedItem.HandMesh.Visible = false;
+            _currentlyEquippedItem.InventoryMesh.Visible = true;
+            _currentlyEquippedItem = null;
+            _equipped = false;
         }
         else
         {
-            _currentlyEquippedItem.InventoryMesh.Visible = true;
-            _currentlyEquippedItem.HandMesh.Visible = false;
-            _currentlyHoveredItem.InventoryMesh.Visible = true;
-            _currentlyHoveredItem.HandMesh.Visible = false;
+            if (_currentlyEquippedItem != null)
+            {
+                _currentlyEquippedItem.HandMesh.Visible = false;
+                _currentlyEquippedItem.InventoryMesh.Visible = true;
+            }
 
-            _currentlyEquippedItem = null;
-            _equipped = false;
-
-            return true;
+            _currentlyEquippedItem = _currentlyHoveredItem;
+            _currentlyEquippedItem.InventoryMesh.Visible = false;
+            _currentlyEquippedItem.HandMesh.Visible = true;
+            _equipped = true;
         }
+
+        CheckInventory(false, isCrouching);
+        return false;
     }
 
     public void ProcessHoldingAnim()

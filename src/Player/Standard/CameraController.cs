@@ -12,9 +12,11 @@ public partial class CameraController : Node3D
     [Export] private Node3D _cameraCrouchNode;
     [Export] private Node3D _armature;
     [Export] private CollisionShape3D _hitBox;
+    [Export] private Node3D _handNode;
 
     [ExportCategory("Ustawienia Kamery")]
     [Export] private float _fovChange = 1.5f;
+    [Export] private float _speedOfChange = 7f;
     [Export] private bool _enableTilt = true;
     [Export] private bool _enableBob = true;
     [Export] private bool _enableBobX = true;
@@ -41,15 +43,17 @@ public partial class CameraController : Node3D
     private Vector3 _baseHeadPosition;
     private float _baseCapsuleHeight;
     private Vector3 _baseArmaturePosition;
-    private const float _heightDifference = 0.44f;
+    private const float _heightDifference = 0.436f;
+    private Vector3 _baseHandPosition;
 
     // Upadek
     private float _timeBob;
     private float _fallValue = 0f;
     private float _fallTimer = 0f;
 
-    // Inne
+    // Target Pozycje
     private Vector3 _targetHeadPosition;
+    private Vector3 _targetHandPosition;
     #endregion
 
     #region Lokalne Funkcje
@@ -73,6 +77,7 @@ public partial class CameraController : Node3D
         _baseHeadPosition = _head.Position;
         _baseArmaturePosition = _armature.Position;
         _targetHeadPosition = _baseHeadPosition;
+        _baseHandPosition = _handNode.Position;
         if (_hitBox.Shape is CapsuleShape3D capsule) _baseCapsuleHeight = capsule.Height;
     }
 
@@ -93,9 +98,11 @@ public partial class CameraController : Node3D
 
     public void ResetCamera()
     {
-        Vector3 rot = _head.Rotation;
-        rot.X = 0f;
-        _head.Rotation = rot;
+        Tween tween = CreateTween();
+
+        tween.TweenProperty(_head, "rotation:x", Mathf.DegToRad(-15f), 0.5f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
     }
 
     public void Crouch(bool isCrouching)
@@ -103,11 +110,13 @@ public partial class CameraController : Node3D
         if (isCrouching)
         {
             _targetHeadPosition = _cameraCrouchNode.Position;
+            _targetHandPosition.Y = _baseHandPosition.Y - _heightDifference - 0.2f;
             if (_hitBox.Shape is CapsuleShape3D capsule) capsule.Height = _baseCapsuleHeight - _heightDifference;
         }
         else
         {
             _targetHeadPosition = _baseHeadPosition;
+            _targetHandPosition.Y = _baseHandPosition.Y;
             if (_hitBox.Shape is CapsuleShape3D capsule) capsule.Height = _baseCapsuleHeight;
         }
     }
@@ -154,12 +163,16 @@ public partial class CameraController : Node3D
         }
 
         Vector3 currentHeadPos = _head.Position;
-        currentHeadPos.Y = Mathf.Lerp(currentHeadPos.Y, offset.Y + _targetHeadPosition.Y, 7f * delta);
+        currentHeadPos.Y = Mathf.Lerp(currentHeadPos.Y, offset.Y + _targetHeadPosition.Y, _speedOfChange * delta);
         _head.Position = currentHeadPos;
 
         Vector3 currentArmPos = _armature.Position;
-        currentArmPos.Y = Mathf.Lerp(currentArmPos.Y, offset.Y + _baseArmaturePosition.Y, 7f * delta);
+        currentArmPos.Y = Mathf.Lerp(currentArmPos.Y, offset.Y + _baseArmaturePosition.Y, _speedOfChange * delta);
         _armature.Position = currentArmPos;
+
+        Vector3 currentHandPos = _handNode.Position;
+        currentHandPos.Y = Mathf.Lerp(currentHandPos.Y, _targetHandPosition.Y, _speedOfChange * delta);
+        _handNode.Position = currentHandPos;
 
         if (_camera != null)
         {

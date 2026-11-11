@@ -169,6 +169,7 @@ public partial class PlayerMain : CharacterBody3D
     {
         if (IsOpenInventory)
         {
+            _isSprinting = false;
             _animTree.Set(_locomotionBlendPath, 0f);
             _animTree.Set(_crouchingBlendPath, 0f);
 
@@ -178,6 +179,7 @@ public partial class PlayerMain : CharacterBody3D
         {
             _animTree.Set(_locomotionBlendPath, Velocity.Length());
             _animTree.Set(_crouchingBlendPath, Velocity.Length());
+            _inventoryController.ProcessHoldingAnim();
 
             CanMove = true;
         }
@@ -192,9 +194,10 @@ public partial class PlayerMain : CharacterBody3D
         }
 
         // Ekwipunek
-        if (Input.IsActionJustPressed("Inventory") && IsOnFloor())
+        if (Input.IsActionJustPressed("Inventory"))
         {
             IsOpenInventory = !IsOpenInventory;
+            if (IsOpenInventory) _cameraController.ResetCamera();
         }
 
         if (IsOpenInventory && @event is InputEventMouseButton mouseButton)
@@ -214,7 +217,7 @@ public partial class PlayerMain : CharacterBody3D
         // Grawitacja
         if (!IsOnFloor())
         {
-            velocity += GetGravity() * d * 1.1f;
+            velocity += GetGravity() * d;
             if (!_isFalling)
             {
                 _isFalling = true;
@@ -227,11 +230,41 @@ public partial class PlayerMain : CharacterBody3D
             _locomotionPlayback.Travel(_walkingStateName);
         }
 
-        if (!CanMove) return;
-
         // Sterowanie
         Vector2 inputDir = Input.GetVector("MoveLeft", "MoveRight", "MoveForward", "MoveBackward");
         Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
+
+        Sprint(direction);
+
+        if (!CanMove)
+        {
+            velocity.X = Mathf.Lerp(velocity.X, 0.0f, d * _deceleration);
+            velocity.Z = Mathf.Lerp(velocity.Z, 0.0f, d * _deceleration);
+
+            Velocity = velocity;
+            MoveAndSlide();
+            return;
+        }
+
+        // Poruszanie sie gracza
+        if (IsOnFloor())
+        {
+            if (direction != Vector3.Zero)
+            {
+                velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * _acceleration);
+                velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * _acceleration);
+            }
+            else
+            {
+                velocity.X = Mathf.Lerp(velocity.X, 0.0f, d * _deceleration);
+                velocity.Z = Mathf.Lerp(velocity.Z, 0.0f, d * _deceleration);
+            }
+        }
+        else
+        {
+            velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * 3.0f);
+            velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * 3.0f);
+        }
 
         // Skok
         if (Input.IsActionJustPressed("Jump") && IsOnFloor() && !_isCrouching)
@@ -268,28 +301,6 @@ public partial class PlayerMain : CharacterBody3D
             _locomotionPlayback.Travel(_walkingStateName);
             _cameraController.Crouch(_isCrouching);
         }
-
-        // Poruszanie sie gracza
-        if (IsOnFloor())
-        {
-            if (direction != Vector3.Zero)
-            {
-                velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * _acceleration);
-                velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * _acceleration);
-            }
-            else
-            {
-                velocity.X = Mathf.Lerp(velocity.X, 0.0f, d * _deceleration);
-                velocity.Z = Mathf.Lerp(velocity.Z, 0.0f, d * _deceleration);
-            }
-        }
-        else
-        {
-            velocity.X = Mathf.Lerp(velocity.X, direction.X * _speed, d * 3.0f);
-            velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * _speed, d * 3.0f);
-        }
-
-        Sprint(direction);
 
         // Obracanie padem
         Vector2 look = Input.GetVector("LookLeft", "LookRight", "LookUp", "LookDown");
