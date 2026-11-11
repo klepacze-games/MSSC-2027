@@ -1,6 +1,8 @@
 [gd_scene format=4 uid="uid://b4t1yinuegh73"]
 
 [ext_resource type="Script" uid="uid://vlbkegywktx1" path="res://src/Vehicles/SnowMobile/SnowMobile.cs" id="1_i23ty"]
+[ext_resource type="Shader" uid="uid://by3yvsdsqccrj" path="res://src/Vehicles/SnowMobile/SnowMobileParticleProcess.gdshader" id="2_utum2"]
+[ext_resource type="Shader" uid="uid://c6oko6qe8e2jk" path="res://src/Vehicles/SnowMobile/SnowMobileSnowParticle.gdshader" id="3_7qfx7"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_i23ty"]
 friction = 0.3
@@ -164,12 +166,36 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_hgw28")
 
-[node name="SnowMobile" type="RigidBody3D" unique_id=1012896474 node_paths=PackedStringArray("_head", "_camera", "_exitPoint", "_centerOfMassNode", "_steeringWheelNode", "_steeringSkidsNode", "_rayCasts")]
+[sub_resource type="Gradient" id="Gradient_7qfx7"]
+offsets = PackedFloat32Array(0, 0.53731346, 1)
+colors = PackedColorArray(0.5882353, 0.8980392, 0.8980392, 1, 0.30598113, 0.70812094, 0.86709803, 1, 0.6666667, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_7qfx7"]
+gradient = SubResource("Gradient_7qfx7")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_utum2"]
+shader = ExtResource("2_utum2")
+shader_parameter/SnowSpreadWidth = 1.0
+shader_parameter/SnowMobileVelocity = 1.0
+shader_parameter/CollorPallete = SubResource("GradientTexture1D_7qfx7")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7qfx7"]
+render_priority = 0
+shader = ExtResource("3_7qfx7")
+shader_parameter/ParticleColor = Color(1, 1, 1, 1)
+shader_parameter/Opacity = 0.40000000596048
+
+[sub_resource type="BoxMesh" id="BoxMesh_7qfx7"]
+material = SubResource("ShaderMaterial_7qfx7")
+size = Vector3(0.01, 0.01, 0.01)
+
+[node name="SnowMobile" type="RigidBody3D" unique_id=1012896474 node_paths=PackedStringArray("_particles", "_head", "_camera", "_exitPoint", "_centerOfMassNode", "_steeringWheelNode", "_steeringSkidsNode", "_rayCasts")]
 mass = 250.0
 physics_material_override = SubResource("PhysicsMaterial_i23ty")
 linear_damp = 0.5
 angular_damp = 4.0
 script = ExtResource("1_i23ty")
+_particles = NodePath("GPUParticles3D2")
 _head = NodePath("Head")
 _camera = NodePath("Head/Camera")
 _exitPoint = NodePath("ExitPoint")
@@ -179,40 +205,40 @@ _steeringSkidsNode = NodePath("SteeringSkidsNode")
 _rayCasts = [NodePath("Ray_FR"), NodePath("Ray_FL"), NodePath("Ray_RR"), NodePath("Ray_RL")]
 
 [node name="Glass" type="MeshInstance3D" parent="." unique_id=1272801899]
-transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, -0.5266872, -3.4501204)
+transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, 0.739922, -3.4127245)
 material_override = SubResource("StandardMaterial3D_i23ty")
 mesh = SubResource("ArrayMesh_utum2")
 
 [node name="Main" type="MeshInstance3D" parent="." unique_id=1069454443]
-transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, -0.5266872, -3.4501204)
+transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, 0.739922, -3.4127245)
 material_override = SubResource("StandardMaterial3D_7qfx7")
 mesh = SubResource("ArrayMesh_7c6ms")
 
 [node name="CollisionShape3D2" type="CollisionShape3D" parent="." unique_id=1153079745]
-transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, -0.5266872, -3.4501204)
+transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, 0.739922, -3.4127245)
 shape = SubResource("ConvexPolygonShape3D_bg7v1")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=2048100930]
-transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, -0.5266872, -3.4501204)
+transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, 0.739922, -3.4127245)
 shape = SubResource("ConvexPolygonShape3D_5ncar")
 
 [node name="InteractionArea" type="Area3D" parent="." unique_id=114985462]
-transform = Transform3D(60, 0, 0, 0, 60, 0, 0, 0, 60, 0, -0.3157909, -1.2878456)
+transform = Transform3D(60, 0, 0, 0, 60, 0, 0, 0, 60, 0, 0.9508183, -1.2504497)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="InteractionArea" unique_id=1108387839]
 shape = SubResource("CylinderShape3D_nxl24")
 
 [node name="ExitPoint" type="Marker3D" parent="." unique_id=523856861]
-transform = Transform3D(60, 0, 0, 0, 60, 0, 0, 0, 60, 1.7086313, -0.5347682, -1.0768906)
+transform = Transform3D(60, 0, 0, 0, 60, 0, 0, 0, 60, 1.7086313, 0.73184097, -1.0394946)
 
 [node name="Head" type="Node3D" parent="." unique_id=876636282]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7138684, -1.235847)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9804776, -1.198451)
 
 [node name="Camera" type="Camera3D" parent="Head" unique_id=358202853]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.00024187565)
 
 [node name="SteeringWheelNode" type="Node3D" parent="." unique_id=148559883]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09127393, -2.0664415)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3578831, -2.0290456)
 
 [node name="Steering" type="MeshInstance3D" parent="SteeringWheelNode" unique_id=372885991]
 transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, -0.61796117, -1.3836789)
@@ -220,7 +246,7 @@ material_override = SubResource("StandardMaterial3D_7qfx7")
 mesh = SubResource("ArrayMesh_4m3sw")
 
 [node name="SteeringSkidsNode" type="Node3D" parent="." unique_id=2027114451]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.7396519, -2.9854653)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5269573, -2.9480693)
 
 [node name="Skids" type="MeshInstance3D" parent="SteeringSkidsNode" unique_id=1368345796]
 transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, 0.21296471, -0.46465516)
@@ -228,34 +254,44 @@ material_override = SubResource("StandardMaterial3D_7qfx7")
 mesh = SubResource("ArrayMesh_vtevu")
 
 [node name="CenterOfMass" type="Node3D" parent="." unique_id=1258756559]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.745, -2.024)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5216092, -1.986604)
 
 [node name="Ray_FR" type="RayCast3D" parent="." unique_id=1939800286]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66152716, -0.9834502, -3.4101102)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66152716, 0.28315902, -3.3727143)
 target_position = Vector3(0, -0.6, 0)
 collision_mask = 2
 
 [node name="Ray_FL" type="RayCast3D" parent="." unique_id=1483615783]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6573287, -0.9834502, -3.4101102)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6573287, 0.28315902, -3.3727143)
 target_position = Vector3(0, -0.6, 0)
 collision_mask = 2
 
 [node name="Ray_RR" type="RayCast3D" parent="." unique_id=533882272]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66196096, -0.98309946, -0.20043412)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66196096, 0.28350973, -0.16303816)
 target_position = Vector3(0, -0.6, 0)
 collision_mask = 2
 
 [node name="Ray_RL" type="RayCast3D" parent="." unique_id=1626170905]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6573287, -0.9834502, -0.20030287)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6573287, 0.28315902, -0.16290691)
 target_position = Vector3(0, -0.6, 0)
 collision_mask = 2
 
 [node name="SpotLight3D" type="SpotLight3D" parent="." unique_id=982108462]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2.8306031)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2666092, -2.7932072)
 light_energy = 13.793
 light_indirect_energy = 11.453
 spot_range = 72.44
 spot_angle = 28.72
+
+[node name="GPUParticles3D2" type="GPUParticles3D" parent="." unique_id=701864762]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15891075, 0.019821167, -0.054908574)
+amount = 5000
+lifetime = 3.0
+preprocess = 1.0
+randomness = 1.0
+visibility_aabb = AABB(-4, 0, 0, 8, 3.605, 9.935)
+process_material = SubResource("ShaderMaterial_utum2")
+draw_pass_1 = SubResource("BoxMesh_7qfx7")
 
 [connection signal="body_entered" from="InteractionArea" to="." method="OnInteractionAreaBodyEntered"]
 [connection signal="body_exited" from="InteractionArea" to="." method="OnInteractionAreaBodyExited"]
