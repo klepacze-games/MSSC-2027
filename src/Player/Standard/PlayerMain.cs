@@ -18,6 +18,8 @@ public partial class PlayerMain : CharacterBody3D
     [ExportGroup("Animacje")] // Reszta animacji jest w inventory controller
     [Export] private string _locomotionStatePlaybackPath;
     [Export] private string _upperBodyStatePlaybackPath;
+    [Export] private string _crouchingConditionPath;
+    [Export] private string _standingConditionPath;
     [ExportSubgroup("Animacje Locomotion State Machine")]
     [Export] private string _fallingStateName;
     [Export] private string _walkingStateName;
@@ -179,6 +181,7 @@ public partial class PlayerMain : CharacterBody3D
         {
             _animTree.Set(_locomotionBlendPath, Velocity.Length());
             _animTree.Set(_crouchingBlendPath, Velocity.Length());
+
             _inventoryController.ProcessHoldingAnim();
 
             CanMove = true;
@@ -214,6 +217,22 @@ public partial class PlayerMain : CharacterBody3D
         Vector3 velocity = Velocity;
         float d = (float)delta;
 
+        // Kucanie
+        if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
+        {
+            _isCrouching = true;
+            _speed = _crouchSpeed;
+            _locomotionPlayback.Travel(_crouchingStateName);
+            _cameraController.Crouch(_isCrouching);
+        }
+        else if (Input.IsActionJustReleased("Crouch") && _isCrouching)
+        {
+            _isCrouching = false;
+            _speed = _standardSpeed;
+            _locomotionPlayback.Travel(_walkingStateName);
+            _cameraController.Crouch(_isCrouching);
+        }
+
         // Grawitacja
         if (!IsOnFloor())
         {
@@ -226,8 +245,15 @@ public partial class PlayerMain : CharacterBody3D
         }
         else if (_isFalling)
         {
+            if (_isCrouching)
+            {
+                _locomotionPlayback.Travel(_crouchingStateName);
+            }
+            else
+            {
+                _locomotionPlayback.Travel(_walkingStateName);
+            }
             _isFalling = false;
-            _locomotionPlayback.Travel(_walkingStateName);
         }
 
         // Sterowanie
@@ -284,22 +310,6 @@ public partial class PlayerMain : CharacterBody3D
         {
             _isSprinting = false;
             _speed = _isCrouching ? _crouchSpeed : _standardSpeed;
-        }
-
-        // Kucanie
-        if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
-        {
-            _isCrouching = true;
-            _speed = _crouchSpeed;
-            _locomotionPlayback.Travel(_crouchingStateName);
-            _cameraController.Crouch(_isCrouching);
-        }
-        else if (Input.IsActionJustReleased("Crouch") && _isCrouching)
-        {
-            _isCrouching = false;
-            _speed = _standardSpeed;
-            _locomotionPlayback.Travel(_walkingStateName);
-            _cameraController.Crouch(_isCrouching);
         }
 
         // Obracanie padem
