@@ -20,6 +20,7 @@ public partial class PlayerMain : CharacterBody3D
     [Export] private string _upperBodyStatePlaybackPath;
     [Export] private string _crouchingConditionPath;
     [Export] private string _standingConditionPath;
+    [Export] private string _fallingConditionPath;
     [ExportSubgroup("Animacje Locomotion State Machine")]
     [Export] private string _fallingStateName;
     [Export] private string _walkingStateName;
@@ -217,22 +218,6 @@ public partial class PlayerMain : CharacterBody3D
         Vector3 velocity = Velocity;
         float d = (float)delta;
 
-        // Kucanie
-        if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
-        {
-            _isCrouching = true;
-            _speed = _crouchSpeed;
-            _locomotionPlayback.Travel(_crouchingStateName);
-            _cameraController.Crouch(_isCrouching);
-        }
-        else if (Input.IsActionJustReleased("Crouch") && _isCrouching)
-        {
-            _isCrouching = false;
-            _speed = _standardSpeed;
-            _locomotionPlayback.Travel(_walkingStateName);
-            _cameraController.Crouch(_isCrouching);
-        }
-
         // Grawitacja
         if (!IsOnFloor())
         {
@@ -245,17 +230,28 @@ public partial class PlayerMain : CharacterBody3D
         }
         else if (_isFalling)
         {
-            if (_isCrouching)
-            {
-                _locomotionPlayback.Travel(_crouchingStateName);
-            }
-            else
-            {
-                _locomotionPlayback.Travel(_walkingStateName);
-            }
             _isFalling = false;
         }
 
+        // Kucanie
+        if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
+        {
+            _isCrouching = true;
+            _speed = _crouchSpeed;
+            _cameraController.Crouch(_isCrouching);
+
+            _animTree.Set(_crouchingConditionPath, true);
+            _animTree.Set(_standingConditionPath, false);
+        }
+        else if (Input.IsActionJustReleased("Crouch") && _isCrouching)
+        {
+            _isCrouching = false;
+            _speed = _standardSpeed;
+            _cameraController.Crouch(_isCrouching);
+
+            _animTree.Set(_crouchingConditionPath, false);
+            _animTree.Set(_standingConditionPath, true);
+        }
         // Sterowanie
         Vector2 inputDir = Input.GetVector("MoveLeft", "MoveRight", "MoveForward", "MoveBackward");
         Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
@@ -311,6 +307,22 @@ public partial class PlayerMain : CharacterBody3D
             _isSprinting = false;
             _speed = _isCrouching ? _crouchSpeed : _standardSpeed;
         }
+
+        // Kucanie
+        // if (Input.IsActionPressed("Crouch") && IsOnFloor() && !_isSprinting)
+        // {
+        //     _isCrouching = true;
+        //     _speed = _crouchSpeed;
+        //     _cameraController.Crouch(_isCrouching);
+        // }
+        // else if (Input.IsActionJustReleased("Crouch") && _isCrouching)
+        // {
+        //     _isCrouching = false;
+        //     _speed = _standardSpeed;
+        //     _cameraController.Crouch(_isCrouching);
+        // }
+        // _animTree.Set(_crouchingConditionPath, _isCrouching);
+        // _animTree.Set(_standingConditionPath, !_isCrouching);
 
         // Obracanie padem
         Vector2 look = Input.GetVector("LookLeft", "LookRight", "LookUp", "LookDown");
