@@ -1,4 +1,5 @@
 using Godot;
+using MSSC2027.Shared;
 
 namespace MSSC2027.Player.Standard;
 
@@ -49,8 +50,8 @@ public partial class CameraController : Node3D
 
     // Upadek
     private float _timeBob;
-    private float _fallValue = 0f;
-    private float _fallTimer = 0f;
+    private float _fallValue;
+    private float _fallTimer;
 
     // Target Pozycje
     private Vector3 _targetHeadPosition;

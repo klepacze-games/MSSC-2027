@@ -27,11 +27,11 @@ public partial class InventoryController : MeshInstance3D
         public bool IsEquipped = false;
     }
     private List<ItemData> _inventoryItems = new();
-    private ItemData _currentlyHoveredItem = null;
-    private ItemData _currentlyEquippedItem = null;
+    private ItemData _currentlyHoveredItem;
+    private ItemData _currentlyEquippedItem;
 
     // Zmienne logiczne
-    private bool _equipped = false;
+    private bool _equipped;
 
     // Animacje
     private AnimationNodeStateMachinePlayback _upperBodyPlayback;

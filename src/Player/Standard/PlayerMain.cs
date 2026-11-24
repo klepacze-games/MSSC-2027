@@ -1,4 +1,5 @@
 using Godot;
+using MSSC2027.Shared;
 using MSSC2027.Vehicles.SnowMobile;
 using GameManager = MSSC2027.AutoLoad.GameManager;
 
