@@ -9,11 +9,13 @@ public partial class PlayerMain : CharacterBody3D
     #region Zmienne
     // Eksporty
     [ExportCategory("Referencje")]
-    [Export] private CameraController _cameraController;
-    [Export] private InventoryController _inventoryController;
     [Export] private Panel _staminaBar;
     [Export] private AnimationTree _animTree;
     [Export] private SnowMobile _snowMobile; // Na razie tak, jak coś to później się będzie zmieniać
+    [ExportGroup("Controller`y")]
+    [Export] private CameraController _cameraController;
+    [Export] private InventoryController _inventoryController;
+    [Export] private GamePadController _gamePadController;
 
     [ExportGroup("Animacje")] // Reszta animacji jest w inventory controller
     [Export] private string _locomotionStatePlaybackPath;

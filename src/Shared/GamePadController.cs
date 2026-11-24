@@ -25,20 +25,20 @@ public partial class GamePadController : Node3D
 		if (Input.GetConnectedJoypads().Count == 0)
 			return;
 
-		float targetWeak = Mathf.Lerp(IdleWeak, MaxWeak, throttle * 0.7f + normalizedSpeed * 0.3f);
-		float targetStrong = Mathf.Lerp(IdleStrong, MaxStrong, throttle);
+		float targetWeak = Mathf.Lerp(_idleWeak, _maxWeak, throttle * 0.7f + normalizedSpeed * 0.3f);
+		float targetStrong = Mathf.Lerp(_idleStrong, _maxStrong, throttle);
 
 		if (throttle <= 0.01f && normalizedSpeed <= 0.02f)
 		{
-			targetWeak = IdleWeak;
-			targetStrong = IdleStrong;
+			targetWeak = _idleWeak;
+			targetStrong = _idleStrong;
 		}
 
 		float smooth = 10f * delta;
 		_currentWeak = Mathf.Lerp(_currentWeak, targetWeak, smooth);
 		_currentStrong = Mathf.Lerp(_currentStrong, targetStrong, smooth);
 
-		Input.StartJoyVibration(DeviceId, _currentWeak, _currentStrong, 0.1f);
+		Input.StartJoyVibration(_deviceId, _currentWeak, _currentStrong, 0.1f);
 	}
 
 	/// <summary>
@@ -53,7 +53,7 @@ public partial class GamePadController : Node3D
 		float strong = Mathf.Clamp(strongMagnitude, 0f, 1f);
 		float duration = Mathf.Max(0.01f, durationSec);
 
-		Input.StartJoyVibration(DeviceId, weak, strong, duration);
+		Input.StartJoyVibration(_deviceId, weak, strong, duration);
 	}
 
 	/// <summary>
@@ -61,7 +61,7 @@ public partial class GamePadController : Node3D
 	/// <summary>
 	public void Stop()
 	{
-		Input.StopJoyVibration(DeviceId);
+		Input.StopJoyVibration(_deviceId);
 	}
 
 	/// <summary>
@@ -69,6 +69,6 @@ public partial class GamePadController : Node3D
 	/// <summary>
 	public override void _ExitTree()
 	{
-		Input.StopJoyVibration(DeviceId);
+		Input.StopJoyVibration(_deviceId);
 	}
 }

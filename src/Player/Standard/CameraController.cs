@@ -13,6 +13,7 @@ public partial class CameraController : Node3D
     [Export] private Node3D _armature;
     [Export] private CollisionShape3D _hitBox;
     [Export] private Node3D _handNode;
+    [Export] private GamePadController _gamePadController;
 
     [ExportCategory("Ustawienia Kamery")]
     [Export] private float _fovChange = 1.5f;
@@ -189,6 +190,7 @@ public partial class CameraController : Node3D
         if (isOnFloor && currentFallVelocity < _fallVelocityThreshold)
         {
             AddFallKick(_fallStrength);
+            _gamePadController.Pulse(weakMagnitude: 0.3f, strongMagnitude: 0.5f, durationSec: 0.13f);
         }
     }
 }
