@@ -1,6 +1,7 @@
 [gd_scene format=4 uid="uid://b4t1yinuegh73"]
 
 [ext_resource type="Script" uid="uid://vlbkegywktx1" path="res://src/Vehicles/SnowMobile/SnowMobile.cs" id="1_i23ty"]
+[ext_resource type="Script" uid="uid://dhi1y2lwqsg8n" path="res://src/Shared/GamePadController.cs" id="2_utum2"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_i23ty"]
 friction = 0.3
@@ -9,6 +10,7 @@ friction = 0.3
 blend_mode = 3
 cull_mode = 2
 vertex_color_use_as_albedo = true
+roughness = 0.0
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dkqw2"]
 resource_name = "Material"
@@ -53,6 +55,7 @@ shadow_mesh = SubResource("ArrayMesh_s1yku")
 cull_mode = 2
 vertex_color_use_as_albedo = true
 metallic = 1.0
+roughness = 0.2
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_jnjji"]
 _surfaces = [{
@@ -164,7 +167,7 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_hgw28")
 
-[node name="SnowMobile" type="RigidBody3D" unique_id=1012896474 node_paths=PackedStringArray("_head", "_camera", "_exitPoint", "_centerOfMassNode", "_steeringWheelNode", "_steeringSkidsNode", "_rayCasts")]
+[node name="SnowMobile" type="RigidBody3D" unique_id=1012896474 node_paths=PackedStringArray("_head", "_camera", "_exitPoint", "_rayCasts", "_centerOfMassNode", "_steeringWheelNode", "_steeringSkidsNode", "_gamePadController")]
 mass = 250.0
 physics_material_override = SubResource("PhysicsMaterial_i23ty")
 linear_damp = 0.5
@@ -173,10 +176,11 @@ script = ExtResource("1_i23ty")
 _head = NodePath("Head")
 _camera = NodePath("Head/Camera")
 _exitPoint = NodePath("ExitPoint")
+_rayCasts = [NodePath("Ray_FR"), NodePath("Ray_FL"), NodePath("Ray_RR"), NodePath("Ray_RL")]
 _centerOfMassNode = NodePath("CenterOfMass")
 _steeringWheelNode = NodePath("SteeringWheelNode")
 _steeringSkidsNode = NodePath("SteeringSkidsNode")
-_rayCasts = [NodePath("Ray_FR"), NodePath("Ray_FL"), NodePath("Ray_RR"), NodePath("Ray_RL")]
+_gamePadController = NodePath("GamePadController")
 
 [node name="Glass" type="MeshInstance3D" parent="." unique_id=1272801899]
 transform = Transform3D(55, 0, 0, 0, -2.4041265e-06, 55, 0, -55, -2.4041265e-06, 4.8758763e-16, -0.5266872, -3.4501204)
@@ -250,12 +254,25 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6573287, -0.9834502, -0.20
 target_position = Vector3(0, -0.6, 0)
 collision_mask = 2
 
-[node name="SpotLight3D" type="SpotLight3D" parent="." unique_id=982108462]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2.8306031)
+[node name="Light1" type="SpotLight3D" parent="." unique_id=982108462]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.14931756, 0.039144665, -2.4237163)
 light_energy = 13.793
 light_indirect_energy = 11.453
 spot_range = 72.44
 spot_angle = 28.72
+
+[node name="Light2" type="SpotLight3D" parent="." unique_id=968490843]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14798076, 0.039144665, -2.4237163)
+light_energy = 13.793
+light_indirect_energy = 11.453
+spot_range = 72.44
+spot_angle = 28.72
+
+[node name="GamePadController" type="Node3D" parent="." unique_id=1150337757]
+script = ExtResource("2_utum2")
+IdleStrong = 0.001
+MaxWeak = 0.15
+MaxStrong = 0.015
 
 [connection signal="body_entered" from="InteractionArea" to="." method="OnInteractionAreaBodyEntered"]
 [connection signal="body_exited" from="InteractionArea" to="." method="OnInteractionAreaBodyExited"]
